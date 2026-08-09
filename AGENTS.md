@@ -19,6 +19,7 @@ That is the whole rule. No checklist: "cost time" is judged in context, and
 AST, OAuth vs JWT, library vs hand-rolled). Log it:
 
     python check_decisions.py --decide
+    python check_decisions.py --stats   # analytics: status mix, reversals
 
 ## 3) The discipline
 

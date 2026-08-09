@@ -92,6 +92,7 @@ a REVISED entry is visibly inconsistent - not blocked, just accountable.
 | `--resolve <ts>` | settle an OPEN decision: append LOCKED superseding `ts` |
 | `--has-open` | gate: exit 1 if any OPEN decision is still current |
 | `--recent [N]` | show the last N decisions with currency |
+| `--stats` | show analytics: status mix, reversal rate, volatility |
 | `--review` | distill repeated reversals into proposed rule drafts |
 | `--review --apply` | write the proposals into rules.txt §7 (LESSONS) |
 | `--init [--target DIR]` | one-command adoption + health check + self-test |
@@ -147,7 +148,7 @@ system prompt.
 ## Development
 
 ```bash
-python _test_decisions.py          # run the unit tests (114, 100% pass expected)
+python _test_decisions.py          # run the unit tests (124, 100% pass expected)
 python check_decisions.py          # validate the log
 python -m py_compile check_decisions.py start.py
 ```

@@ -24,6 +24,9 @@ top of this file is the single source of truth - releases are cut from it by
 - Robustness tests: 100-decision fuzz, BOM / invalid UTF-8, en-dash
   statuses, multi-marker precedence in `--check-commit`, and the manual
   LOCKED + SUPERSEDES path through `--decide`.
+- `--stats` analytics command: status mix, current/superseded counts,
+  reversal rate, average time from LOCKED to REVISED, and the most
+  volatile topics.
 
 ## [0.3.0] - 2026-08-09
 

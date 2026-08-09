@@ -17,6 +17,8 @@ CHOSEN and WHY (proactive memory). Run from the folder holding this script
                                                            decision is still current
     python check_decisions.py --recent [N]                 show the last N decisions
                                                            with their currency
+    python check_decisions.py --stats                      show analytics: status
+                                                           mix, reversals, volatility
     python check_decisions.py --review                     distill repeated reversals
                                                            into proposed rules drafts
     python check_decisions.py --review --apply             write the drafts into
@@ -375,6 +377,65 @@ def cmd_recent(text, n):
     return 0
 
 
+def cmd_stats(text):
+    """Analytics over the decision log: status mix, reversals, volatility."""
+    entries = parse_entries(text)
+    if not entries:
+        print("No decisions in the decision log - nothing to summarize.")
+        return 0
+    counts = {}
+    statuses = {}
+    for e in entries:
+        st = status_token(e["fields"].get("STATUS", "")).upper()
+        statuses[e["tag"]] = st
+        counts[st] = counts.get(st, 0) + 1
+    open_now = len(current_open(entries))
+    superseded = sum(1 for e in entries if superseded_by(entries, e["tag"]) is not None)
+    table = by_tag(entries)
+    revs = [e for e in entries
+            if statuses.get(e["tag"]) == "REVISED"
+            and e["fields"].get("SUPERSEDES") in table]
+
+    def _ts(tag):
+        try:
+            return datetime.strptime(tag, "%Y-%m-%d %H:%M")
+        except ValueError:
+            return None
+
+    deltas = []
+    for e in revs:
+        base = table[e["fields"]["SUPERSEDES"]]
+        t0, t1 = _ts(base["tag"]), _ts(e["tag"])
+        if t0 is not None and t1 is not None and t1 >= t0:
+            deltas.append((t1 - t0).total_seconds() / 86400.0)
+    avg_days = sum(deltas) / len(deltas) if deltas else 0.0
+
+    locked = counts.get("LOCKED", 0)
+    settled = locked + counts.get("REVISED", 0)
+    rate = (len(revs) / settled * 100.0) if settled else 0.0
+
+    rev_by_topic = {}
+    for e in revs:
+        rev_by_topic.setdefault(_topic_of(e), []).append(e)
+    volatile = sorted(rev_by_topic.items(), key=lambda kv: (-len(kv[1]), kv[0]))[:5]
+
+    mix = " | ".join(f"{k} {counts[k]}" for k in ("LOCKED", "OPEN", "REVISED") if k in counts)
+    print(f"DECISION LOG STATS - {len(entries)} decision(s)")
+    print(f"  status mix  : {mix}")
+    print(f"  open now    : {open_now} current OPEN decision(s) still awaiting a call")
+    print(f"  superseded  : {superseded} decision(s) no longer current")
+    print(f"  reversals   : {len(revs)} (of {settled} settled, {rate:.1f}% were REVISED)")
+    if deltas:
+        print(f"  avg LOCKED -> REVISED : {avg_days:.1f} day(s)")
+    else:
+        print("  avg LOCKED -> REVISED : n/a")
+    if volatile:
+        print("  most volatile topics:")
+        for topic, rs in volatile:
+            print(f"    - {topic.split(':', 1)[1]} ({len(rs)} reversal(s))")
+    return 0
+
+
 # --- Review distillation (--review) ----------------------------------------
 
 def _topic_of(e):
@@ -674,6 +735,8 @@ def main():
                     help="gate: exit 1 if any OPEN decision is still current")
     ap.add_argument("--recent", nargs="?", const=5, type=int, metavar="N",
                     help="show the last N decisions (default 5) with currency")
+    ap.add_argument("--stats", action="store_true",
+                    help="show analytics: status mix, reversal rate, volatility")
     ap.add_argument("--review", action="store_true",
                     help="distill repeated reversals into proposed rule drafts "
                          "(preview; --apply writes rules.txt section 7)")
@@ -716,6 +779,8 @@ def main():
         return cmd_has_open(text)
     if args.recent is not None:
         return cmd_recent(text, args.recent)
+    if args.stats:
+        return cmd_stats(text)
     if args.review:
         rules_path = Path(args.rules) if args.rules else RULES
         return cmd_review(text, rules_path, args.apply)
