@@ -439,7 +439,12 @@ def cmd_stats(text):
 # --- Review distillation (--review) ----------------------------------------
 
 def _topic_of(e):
-    """Grouping key for a decision: the FILES target when present, else title."""
+    """Grouping key for --review/--stats: first FILES basename when present,
+    else the first 3 title words.
+
+    Deterministic by design, not a taxonomy: two entries touching the same
+    basename in different directories merge into one topic.
+    """
     files = e["fields"].get("FILES", "")
     if files:
         return "files:" + Path(files.split(",")[0].strip()).name.lower()

@@ -28,6 +28,12 @@ top of this file is the single source of truth - releases are cut from it by
   reversal rate, average time from LOCKED to REVISED, and the most
   volatile topics.
 
+### Docs
+
+- Document the `_topic_of` grouping heuristic (`--review` / `--stats`):
+  first `FILES` basename, else first 3 title words; same basename in
+  different dirs merges.
+
 ## [0.3.0] - 2026-08-09
 
 ### Added
