@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The version at the
 top of this file is the single source of truth - releases are cut from it by
 `.github/workflows/release.yml`.
 
+## [0.3.0] - 2026-08-09
+
+### Added
+
+- `_check_readme_count.py` + a `README test-count drift guard` CI job:
+  any push or PR where the README-stated test count differs from the
+  actual suite fails CI (now a required check) - the stale-count bug
+  class is mechanically prevented.
+- README Development section now states the test count explicitly
+  (104) instead of a vague "100% pass expected".
+
 ## [0.2.0] - 2026-08-09
 
 ### Added
