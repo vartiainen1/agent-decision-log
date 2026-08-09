@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The version at the
 top of this file is the single source of truth - releases are cut from it by
 `.github/workflows/release.yml`.
 
+## [Unreleased]
+
+### Fixed
+
+- `_extract_area()` marker semantics documented and pinned by tests:
+  the CI gate matches the hooks (first matching line, last
+  `AREA:`/`LOG:` marker on it).
+- `status_token()` strips the en-dash as well as the em-dash (`OPEN–` ->
+  `OPEN`).
+- `cmd_revise()` / `cmd_resolve()` use the already-read `text` instead of
+  re-reading the log (one read, no stale-write window).
+- `load()` reads with `utf-8-sig` so a BOM-prefixed log is parsed.
+
+### Added
+
+- `--review` proposals now quote each reversal's REASON, so the draft
+  shows why the decision kept changing.
+- Robustness tests: 100-decision fuzz, BOM / invalid UTF-8, en-dash
+  statuses, multi-marker precedence in `--check-commit`, and the manual
+  LOCKED + SUPERSEDES path through `--decide`.
+
 ## [0.3.0] - 2026-08-09
 
 ### Added
