@@ -124,6 +124,11 @@ decisions teach rules (this `--review`) - both feed the same permanent memory.
 Each proposal also quotes the REASON behind every reversal, so the draft
 shows *why* the decision kept changing - not just that it did.
 
+Grouping is by heuristic, not taxonomy: the first `FILES` basename when a
+decision names files, else the first three words of its title. Two entries
+on the same basename in different folders merge into one topic - fine for
+spotting volatility, not a perfect classification.
+
 ## FAQ
 
 **Why not just use a NOTES.md?** A notes file is where decisions go to be
