@@ -6,6 +6,8 @@ top of this file is the single source of truth - releases are cut from it by
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-09
+
 ### Fixed
 
 - `_extract_area()` marker semantics documented and pinned by tests:
