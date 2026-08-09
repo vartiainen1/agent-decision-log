@@ -117,6 +117,11 @@ Cross-link them in your setup notes.
   SUPERSEDES: 2026-08-12 09:00
   STATUS: REVISED.
 
+[2026-08-09 05:56] DECISION: Release workflow skips cleanly when CHANGELOG has no released version
+  REASON: A fresh repo has only [Unreleased]; the old exit-1 reddened every non-release push and the first live push proved it. Skip (exit 0) + guard.
+  FILES: .github/workflows/release.yml
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================

@@ -4,9 +4,16 @@ name: Release
 # CHANGELOG.md is bumped. The single source of truth for versions is
 # CHANGELOG.md - no package.json / setup.py to keep in sync.
 #
-# Flow: bump the version in CHANGELOG.md, push to main -> this workflow tags it
-# (vX.Y.Z) and opens a DRAFT release with that changelog section as the body.
-# Drafts stay private until you edit + publish them on the Releases page.
+# Flow: bump the version in CHANGELOG.md, push to master -> this workflow tags
+# it (vX.Y.Z) and opens a DRAFT release with that changelog section as the
+# body. Drafts stay private until you edit + publish them on the Releases
+# page, so a stray push can never announce something by accident. Drafts are
+# created even if CI fails on that push - safe, because nothing is published
+# automatically.
+#
+# Non-release pushes (top of CHANGELOG.md is still [Unreleased] and no
+# released version exists yet, e.g. a fresh repo) complete with a clean
+# "no version to release" skip instead of failing - the run goes green.
 #
 # Notes:
 # - Prerelease tags (0.2.0-rc.1) are NOT supported - plain X.Y.Z semver only.
@@ -23,6 +30,8 @@ on:
 permissions:
   contents: write # create tags and releases
 
+# Only one release run at a time: two rapid pushes bumping the version must
+# not race past the tag-exists check and both try to create the tag.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -42,15 +51,18 @@ jobs:
         id: version
         run: |
           ver=$(awk '/^## /{ line=$0; end=index(line, "]"); if (end > 4) { v=substr(line, 5, end - 5); if (v != "Unreleased") { print v; exit } } }' CHANGELOG.md)
-          if ! printf '%s' "$ver" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "no semver version found at the top of CHANGELOG.md (got: '$ver')" >&2
-            exit 1
+          if printf '%s' "$ver" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "version=$ver" >> "$GITHUB_OUTPUT"
+            echo "Found version: $ver"
+          else
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "No released version in CHANGELOG.md (top is [Unreleased]) -"
+            echo "nothing to tag or release on this push. Run completes cleanly."
           fi
-          echo "version=$ver" >> "$GITHUB_OUTPUT"
-          echo "Found version: $ver"
 
       - name: Check whether the tag already exists
         id: tagcheck
+        if: steps.version.outputs.version != ''
         run: |
           if git tag -l "v${{ steps.version.outputs.version }}" | grep -q .; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
@@ -61,6 +73,7 @@ jobs:
 
       - name: Extract changelog section for the release body
         id: body
+        if: steps.version.outputs.version != ''
         run: |
           ver="${{ steps.version.outputs.version }}"
           awk -v v="$ver" '
@@ -73,7 +86,7 @@ jobs:
           fi
 
       - name: Create tag + draft release
-        if: steps.tagcheck.outputs.exists == 'false'
+        if: steps.version.outputs.version != '' && steps.tagcheck.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
