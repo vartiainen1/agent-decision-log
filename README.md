@@ -95,6 +95,7 @@ a REVISED entry is visibly inconsistent - not blocked, just accountable.
 | `--review` | distill repeated reversals into proposed rule drafts |
 | `--review --apply` | write the proposals into rules.txt §7 (LESSONS) |
 | `--init [--target DIR]` | one-command adoption + health check + self-test |
+| `--check-commit FILE` | gate: exit 0 only if the commit message in FILE names a logged decision |
 
 ## How the currency rule works
 

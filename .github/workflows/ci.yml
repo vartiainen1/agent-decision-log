@@ -32,3 +32,14 @@ jobs:
 
       - name: Decision-log linter
         run: python check_decisions.py
+  commit-gate:
+    name: commit-message gate (log-before-fix)
+    if: github.event_name == 'push' # PR merge commits carry no AREA marker; PRs are gated at merge/push time
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Re-run the gate on the pushed commit
+        run: |
+          git log -1 --format=%B > commit_msg.txt
+          python3 check_decisions.py --check-commit commit_msg.txt

@@ -131,6 +131,11 @@ Cross-link them in your setup notes.
   REASON: the ecosystem cross-link should be visible at the top of the README, not only in the bottom Companion section; mirrors the sibling's badge row
   STATUS: LOCKED.
 
+[2026-08-09 07:26] DECISION: add a commit-message gate to the CI workflow
+  REASON: the AREA marker was convention only - this repo has no local commit hook, so mechanical enforcement needs a server-side gate in CI
+  FILES: check_decisions.py, .github/workflows/ci.yml, _test_decisions.py
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
