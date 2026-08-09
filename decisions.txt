@@ -122,6 +122,11 @@ Cross-link them in your setup notes.
   FILES: .github/workflows/release.yml
   STATUS: LOCKED.
 
+[2026-08-09 06:01] DECISION: Release v0.1.0 - first published release of the decision log
+  REASON: The repo is live and green; a released version makes the release badge render and gives the pitch kit a citable version
+  FILES: CHANGELOG.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
