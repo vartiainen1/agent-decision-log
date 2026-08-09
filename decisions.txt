@@ -212,6 +212,11 @@ Cross-link them in your setup notes.
   FILES: README.md, CHANGELOG.md
   STATUS: LOCKED.
 
+[2026-08-09 10:25] DECISION: apply the distilled --review proposals to rules.txt section 7
+  REASON: the compounding loop produced 2 proposals (parser.py 3 reversals, config.yaml 2) with quoted REASONs; the rules.txt section 7 draft still shows the stale 10-decision generation - time to confirm and apply
+  FILES: rules.txt
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
