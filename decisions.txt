@@ -146,6 +146,11 @@ Cross-link them in your setup notes.
   FILES: CHANGELOG.md
   STATUS: LOCKED.
 
+[2026-08-09 07:59] DECISION: state the unit-test count explicitly in the README Development section
+  REASON: an explicit count prevents silent drift - the same stale-count bug that hit the error-log (quoted '90' vs real count); a reviewer flagged the vague '100% pass expected' wording
+  FILES: README.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
