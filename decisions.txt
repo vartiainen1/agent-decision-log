@@ -1,0 +1,94 @@
+# DECISION LOG
+# What the agent CHOSE and WHY - proactive memory ("I chose this").
+# Complement to an error log ("I broke this"). Append-only: history is
+# never rewritten - corrections are new entries that point back.
+
+# THREE STATES:
+#   LOCKED   - the decision stands
+#   OPEN     - deferred; needs a decision next session
+#   REVISED  - supersedes an earlier decision (carries SUPERSEDES: <ts>)
+
+# THE FORK RULE (when to log):
+#   Log a decision when reversing it would cost time, or when you
+#   actively considered an alternative and picked one.
+
+# Entry format:
+#   [2026-08-09 14:32] DECISION: used regex instead of AST parser
+#     REASON: faster for simple case, file was small
+#     FILES: src/parser.py
+#     STATUS: LOCKED
+
+# A REVISED entry points back at what it replaced:
+#   [2026-08-10 09:15] DECISION: moved parser to AST
+#     REASON: file grew past 200 lines; regex became unmaintainable
+#     FILES: src/parser.py
+#     SUPERSEDES: 2026-08-09 14:32
+#     STATUS: REVISED
+
+================================================================================
+1) EXAMPLE ENTRIES
+================================================================================
+[2026-08-09 14:32] DECISION: used regex instead of AST parser
+  REASON: faster for simple case, file was small
+  FILES: src/parser.py
+  STATUS: LOCKED
+
+[2026-08-09 15:00] DECISION: auth flow - JWT over OAuth
+  REASON: single API consumer, no third-party login needed yet
+  FILES: auth.py
+  STATUS: OPEN
+
+[2026-08-10 09:15] DECISION: moved parser to AST
+  REASON: file grew past 200 lines; regex became unmaintainable
+  FILES: src/parser.py
+  SUPERSEDES: 2026-08-09 14:32
+  STATUS: REVISED
+
+================================================================================
+2) VALIDATION
+================================================================================
+Run `python check_decisions.py` (no arguments) to validate the log:
+  - every entry needs a timestamp, DECISION, REASON, and a valid STATUS
+  - STATUS must be LOCKED, OPEN, or REVISED
+  - a REVISED entry must carry SUPERSEDES: <timestamp of what it replaces>
+  - SUPERSEDES must point at an entry that actually exists
+  - timestamps must be unique
+Exit code 0 = valid, 1 = invalid.
+
+================================================================================
+3) WORKFLOW
+================================================================================
+  - Before fixing/choosing: run `python start.py` to see recent decisions
+    and anything still OPEN.
+  - When you make a fork-in-the-road choice:
+        python check_decisions.py --decide
+  - When you change your mind later:
+        python check_decisions.py --revise
+  - Distill recurring reversals into rules:
+        python check_decisions.py --review
+        python check_decisions.py --review --apply   # writes rules.txt drafts
+
+================================================================================
+4) COMPANION TOOL
+================================================================================
+This is the decision half of the pair. The failure half lives in
+agent-error-log (errors.txt). The two feed the same permanent memory:
+  - failures teach rules (agent-error-log --lessons)
+  - decisions teach rules (this tool --review)
+Cross-link them in your setup notes.
+
+[2026-08-09 05:41] DECISION: Build agent-decision-log as companion to agent-error-log
+  REASON: Handoff pain: new sessions re-explore settled decisions; boot recall fixes recall at session start
+  FILES: src/, docs
+  STATUS: LOCKED.
+
+================================================================================
+5) TO ADD A NEW ENTRY
+================================================================================
+Run `python check_decisions.py --decide` (it scaffolds the entry for you),
+or copy this template:
+
+  [YYYY-MM-DD HH:MM] DECISION: <what you chose>
+    REASON: <why - the alternative you considered>
+    FILES: <files affected, optional>
+    STATUS: LOCKED            (LOCKED / OPEN / REVISED)

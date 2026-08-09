@@ -1,0 +1,36 @@
+# RULES - how the agent should behave
+# Read by AI coding agents (via AGENTS.md or pasted into the system prompt).
+
+## 1) Decision discipline (the FORK RULE)
+Log a decision when reversing it would cost time, or when you actively
+considered an alternative and picked one. Use:
+    python check_decisions.py --decide
+
+## 2) Never repeat exploration
+Before re-deciding something, check decisions.txt - if it is LOCKED, honor
+it unless the context has genuinely changed (then log a REVISED entry).
+
+## 3) Boot recall
+Run `python start.py` at session start. It prints the last decisions and
+anything still OPEN. Start from that state instead of re-exploring.
+
+## 4) Resolve OPEN decisions
+Anything STATUS: OPEN is a debt carried into the next session. Settle it
+early, or say explicitly why it stays deferred.
+
+## 5) Corrections are append-only
+Never edit a past decision. If a decision changes, append a REVISED entry
+with SUPERSEDES: <timestamp> pointing back at the old one.
+
+## 6) Non-negotiables
+- Never use `git commit --no-verify` to skip a hook (this repo's sibling
+  agent-error-log gates commits server-side; keep the discipline here too).
+
+## 7) LESSONS LEARNED (proposed drafts)
+Drafts proposed by `python check_decisions.py --review --apply` land here.
+A human confirms them; until then they are proposals, not rules.
+
+================================================================================
+TO ADD A NEW RULE
+================================================================================
+Append a numbered section above this line, or propose via --review --apply.

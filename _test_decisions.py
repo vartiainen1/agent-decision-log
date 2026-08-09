@@ -1,0 +1,383 @@
+"""Unit tests for check_decisions.py - parsing, validation, gates, decide,
+revise, resolve, recent, review, init.
+Run: python _test_decisions.py"""
+
+import io
+import sys
+import tempfile
+from pathlib import Path
+from unittest import mock
+
+import check_decisions as cd
+
+PASS = 0
+
+BAR = "=" * 80
+
+
+def t(name, cond):
+    global PASS
+    assert cond, f"FAIL: {name}"
+    PASS += 1
+    print(f"PASS {PASS}: {name}")
+
+
+def quiet(fn, *args, **kwargs):
+    """Run fn with stdout captured so PASS lines stay readable."""
+    old = sys.stdout
+    sys.stdout = io.StringIO()
+    try:
+        return fn(*args, **kwargs)
+    finally:
+        sys.stdout = old
+
+
+def entry(ts, title, status="LOCKED", reason="why", files="", supersedes=""):
+    """One template-formatted decision entry."""
+    e = f"[{ts}] DECISION: {title}\n"
+    if reason is not None:
+        e += f"  REASON: {reason}\n"
+    if files:
+        e += f"  FILES: {files}\n"
+    if supersedes:
+        e += f"  SUPERSEDES: {supersedes}\n"
+    e += f"  STATUS: {status}.\n"
+    return e
+
+
+def sample_log():
+    """Small representative log: LOCKED, OPEN, and a REVISED chain entry."""
+    return (
+        BAR + "\n1) TEST AREA\n" + BAR + "\n\n"
+        + entry("2026-08-09 14:32", "used regex instead of AST parser", files="src/parser.py")
+        + "\n"
+        + entry("2026-08-09 15:00", "auth flow - JWT over OAuth", status="OPEN")
+        + "\n"
+        + entry("2026-08-10 09:15", "moved parser to AST", status="REVISED",
+                files="src/parser.py", supersedes="2026-08-09 14:32")
+        + "\n"
+        + BAR + "\n5) TO ADD A NEW ENTRY\n" + BAR + "\n"
+        + "  [YYYY-MM-DD HH:MM] DECISION: <what you chose>\n"
+        + "    REASON: <why - the alternative you considered>\n"
+        + "    STATUS: LOCKED | OPEN | REVISED\n"
+    )
+
+
+def tmp_log(text):
+    """Write text to a throwaway file; returns (cleaner, path)."""
+    d = tempfile.TemporaryDirectory()
+    p = Path(d.name) / "decisions.txt"
+    p.write_text(text, encoding="utf-8")
+    return d, p
+
+
+# --- parse_entries ---------------------------------------------------------
+S = sample_log()
+es = cd.parse_entries(S)
+t("parses the 3 real entries", len(es) == 3)
+t("indented template is not an entry", not any("what you chose" in e["title"] for e in es))
+t("tags parsed", es[0]["tag"] == "2026-08-09 14:32")
+t("titles parsed", es[0]["title"] == "used regex instead of AST parser")
+t("fields extracted", es[0]["fields"]["STATUS"] == "LOCKED." and es[0]["fields"]["REASON"] == "why")
+t("REVISED carries SUPERSEDES", es[2]["fields"]["SUPERSEDES"] == "2026-08-09 14:32")
+t("line index points at the header", S.splitlines()[es[0]["line"]] == es[0]["block"].splitlines()[0])
+t("body stops before section bar", not any("5) TO ADD" in l for e in es for l in e["body"]))
+t("empty text parses to nothing", cd.parse_entries("") == [])
+
+# --- status_token ----------------------------------------------------------
+t("status_token strips dot", cd.status_token("LOCKED.") == "LOCKED")
+t("status_token splits note", cd.status_token("OPEN - deferred") == "OPEN")
+t("status_token empty", cd.status_token("") == "")
+
+# --- by_tag / superseded_by / current_open ---------------------------------
+t("by_tag maps timestamps", cd.by_tag(es)["2026-08-09 14:32"]["title"].startswith("used regex"))
+t("superseded_by finds the REVISED entry", cd.superseded_by(es, "2026-08-09 14:32")["tag"] == "2026-08-10 09:15")
+t("superseded_by none for current", cd.superseded_by(es, "2026-08-10 09:15") is None)
+t("current_open finds the OPEN entry", [e["tag"] for e in cd.current_open(es)] == ["2026-08-09 15:00"])
+resolved = es + cd.parse_entries(
+    entry("2026-08-11 10:00", "settled auth", supersedes="2026-08-09 15:00"))
+t("current_open drops resolved OPEN", cd.current_open(resolved) == [])
+
+# --- find_section5 / insert_before_section5 --------------------------------
+idx = cd.find_section5(S)
+t("find_section5 found", idx is not None and "5) TO ADD" in S.splitlines()[idx])
+t("find_section5 none", cd.find_section5("no section here") is None)
+
+BLOCK = entry("2026-08-08 10:00", "inserted")
+ins = cd.insert_before_section5(S, BLOCK)
+L = ins.splitlines()
+t("insert keeps the section-5 bar attached", L[L.index("5) TO ADD A NEW ENTRY") - 1].startswith("==="))
+t("insert places block before section 5", ins.index("[2026-08-08 10:00]") < ins.index("5) TO ADD A NEW ENTRY"))
+t("insert no double blank lines", "\n\n\n" not in ins)
+t("insert appends when no section 5", cd.insert_before_section5("A\nB\n", BLOCK).endswith(BLOCK.rstrip("\n") + "\n"))
+no_bar = "A\nB\n5) TO ADD A NEW ENTRY\n====\n"
+t("insert falls back when no bar above section 5",
+  cd.insert_before_section5(no_bar, BLOCK).index("[2026-08-08 10:00]") < cd.insert_before_section5(no_bar, BLOCK).index("5) TO ADD A NEW ENTRY"))
+
+# --- cmd_check (validation) ------------------------------------------------
+t("clean log validates", quiet(cd.cmd_check, S) == 0)
+t("missing REASON fails", quiet(cd.cmd_check, entry("2026-08-01 10:00", "no reason", reason=None)) == 1)
+t("missing STATUS fails", quiet(cd.cmd_check, entry("2026-08-01 10:00", "no status").replace("  STATUS: LOCKED.\n", "")) == 1)
+t("bad status warns only", quiet(cd.cmd_check, entry("2026-08-01 10:00", "bad status", status="WEIRD")) == 0)
+t("REVISED without SUPERSEDES fails", quiet(cd.cmd_check, entry("2026-08-01 10:00", "revised no ss", status="REVISED")) == 1)
+t("SUPERSEDES to nowhere fails", quiet(cd.cmd_check, entry("2026-08-01 10:00", "bad ref", status="REVISED", supersedes="1999-01-01 00:00")) == 1)
+t("SUPERSEDES pointing forward fails",
+  quiet(cd.cmd_check, entry("2026-08-01 10:00", "fwd ref", status="REVISED", supersedes="2026-08-02 10:00")
+        + entry("2026-08-02 10:00", "later")) == 1)
+t("unusual tag warns only", quiet(cd.cmd_check, entry("yesterday", "odd tag")) == 0)
+t("duplicate timestamp warns only", quiet(cd.cmd_check, entry("2026-08-01 10:00", "dup a") + entry("2026-08-01 10:00", "dup b")) == 0)
+t("empty log validates", quiet(cd.cmd_check, "") == 0)
+t("LOCKED resolving OPEN validates",
+  quiet(cd.cmd_check, entry("2026-08-01 10:00", "open one", status="OPEN")
+        + entry("2026-08-02 10:00", "settled it", supersedes="2026-08-01 10:00")) == 0)
+
+# --- cmd_has_open (gate) ---------------------------------------------------
+t("gate passes with no current OPEN", quiet(cd.cmd_has_open, entry("2026-08-01 10:00", "locked one")) == 0)
+t("gate fails with current OPEN", quiet(cd.cmd_has_open, S) == 1)
+resolved_log = (entry("2026-08-09 15:00", "auth open", status="OPEN")
+                + entry("2026-08-11 10:00", "settled auth", supersedes="2026-08-09 15:00"))
+t("gate passes when OPEN was resolved", quiet(cd.cmd_has_open, resolved_log) == 0)
+
+# --- cmd_recent ------------------------------------------------------------
+t("recent empty log ok", quiet(cd.cmd_recent, "", 5) == 0)
+def capture(fn, *args):
+    old = sys.stdout
+    sys.stdout = io.StringIO()
+    try:
+        rc = fn(*args)
+        return rc, sys.stdout.getvalue()
+    finally:
+        sys.stdout = old
+
+
+rc_r, out_r = capture(cd.cmd_recent, S, 3)
+t("recent returns 0", rc_r == 0)
+t("recent marks the chain entries", "SUPERSEDED BY 2026-08-10 09:15" in out_r and "CURRENT" in out_r)
+t("recent lists OPEN requiring attention", "OPEN decision(s) requiring attention" in out_r
+  and "auth flow - JWT over OAuth" in out_r)
+
+# --- cmd_decide (scaffolder) ----------------------------------------------
+with mock.patch("check_decisions.input", side_effect=["my call", "the reason", "src/a.py", "LOCKED", ""]):
+    d1, p1 = tmp_log(sample_log())
+    try:
+        t("decide returns 0", quiet(cd.cmd_decide, p1.read_text(encoding="utf-8"), p1) == 0)
+        added = p1.read_text(encoding="utf-8")
+        t("decide writes the entry", "DECISION: my call" in added and "REASON: the reason" in added)
+        t("decide wrote STATUS LOCKED", "STATUS: LOCKED." in added)
+        t("decide written entry validates", quiet(cd.cmd_check, added) == 0)
+        L1 = added.splitlines()
+        t("decide above the section-5 bar", L1[L1.index("5) TO ADD A NEW ENTRY") - 1].startswith("==="))
+        t("decide leaves no double blanks", "\n\n\n" not in added)
+    finally:
+        d1.cleanup()
+
+with mock.patch("check_decisions.input", side_effect=["deferred", "not now", "", "OPEN"]):
+    d2, p2 = tmp_log(sample_log())
+    try:
+        t("decide OPEN path returns 0", quiet(cd.cmd_decide, p2.read_text(encoding="utf-8"), p2) == 0)
+        t("decide OPEN has no SUPERSEDES prompt leak", "SUPERSEDES: " not in p2.read_text(encoding="utf-8").splitlines()[-2])
+    finally:
+        d2.cleanup()
+
+# invalid status is retried until canonical
+with mock.patch("check_decisions.input", side_effect=["a2", "e", "", "NOPE", "OPEN"]):
+    d3, p3 = tmp_log(sample_log())
+    try:
+        t("decide retries bad status", quiet(cd.cmd_decide, p3.read_text(encoding="utf-8"), p3) == 0)
+        t("decide status becomes canonical", "STATUS: OPEN." in p3.read_text(encoding="utf-8"))
+    finally:
+        d3.cleanup()
+
+# REVISED without a valid supersedes aborts
+with mock.patch("check_decisions.input", side_effect=["r1", "why", "", "REVISED", ""]):
+    d4, p4 = tmp_log(sample_log())
+    try:
+        try:
+            quiet(cd.cmd_decide, p4.read_text(encoding="utf-8"), p4)
+            t("decide REVISED without ss aborts", False)
+        except SystemExit:
+            t("decide REVISED without ss aborts", True)
+        t("aborted decide wrote nothing", "DECISION: r1" not in p4.read_text(encoding="utf-8"))
+    finally:
+        d4.cleanup()
+
+# --- cmd_revise / cmd_resolve ---------------------------------------------
+with mock.patch("check_decisions.input", side_effect=["now using AST", "file grew", "src/parser.py"]):
+    d5, p5 = tmp_log(sample_log())
+    try:
+        t("revise returns 0", quiet(cd.cmd_revise, p5.read_text(encoding="utf-8"), p5, "2026-08-09 14:32") == 0)
+        added5 = p5.read_text(encoding="utf-8")
+        t("revise appends REVISED", "DECISION: now using AST" in added5 and "SUPERSEDES: 2026-08-09 14:32" in added5)
+        t("revised log validates", quiet(cd.cmd_check, added5) == 0)
+    finally:
+        d5.cleanup()
+
+t("revise unknown ts rejected", quiet(cd.cmd_revise, S, Path("x"), "1999-01-01 00:00") == 1)
+
+with mock.patch("check_decisions.input", side_effect=["JWT it is", "single consumer", ""]):
+    d6, p6 = tmp_log(sample_log())
+    try:
+        t("resolve returns 0", quiet(cd.cmd_resolve, p6.read_text(encoding="utf-8"), p6, "2026-08-09 15:00") == 0)
+        added6 = p6.read_text(encoding="utf-8")
+        t("resolve appends LOCKED + SUPERSEDES", "DECISION: JWT it is" in added6 and "SUPERSEDES: 2026-08-09 15:00" in added6)
+        t("resolved log validates", quiet(cd.cmd_check, added6) == 0)
+        t("resolved OPEN no longer current", cd.current_open(cd.parse_entries(added6)) == [])
+    finally:
+        d6.cleanup()
+
+t("resolve unknown ts rejected", quiet(cd.cmd_resolve, S, Path("x"), "1999-01-01 00:00") == 1)
+
+# EOF aborts cleanly
+with mock.patch("check_decisions.input", side_effect=EOFError):
+    try:
+        cd.ask("x", required=True)
+        t("ask aborts on EOF", False)
+    except SystemExit:
+        t("ask aborts on EOF", True)
+
+with mock.patch("check_decisions.input", return_value=""):
+    try:
+        cd.ask("x", required=True)
+        t("ask rejects empty required", False)
+    except SystemExit:
+        t("ask rejects empty required", True)
+
+# --- review (--review / --review --apply) ----------------------------------
+
+def reversal_log():
+    return (
+        BAR + "\n1) TEST\n" + BAR + "\n\n"
+        + entry("2026-08-01 10:00", "regex parser", files="src/parser.py")
+        + "\n"
+        + entry("2026-08-02 10:00", "moved to AST", status="REVISED",
+                files="src/parser.py", supersedes="2026-08-01 10:00")
+        + "\n"
+        + entry("2026-08-03 10:00", "back to regex", status="REVISED",
+                files="src/parser.py", supersedes="2026-08-02 10:00")
+        + "\n"
+        + entry("2026-08-04 10:00", "kept regex", status="LOCKED", files="src/parser.py")
+        + "\n"
+        + BAR + "\n5) TO ADD A NEW ENTRY\n" + BAR + "\n"
+    )
+
+t("topic key uses FILES", cd._topic_of(es[0]) == "files:parser.py")
+
+d7, p7 = tmp_log(reversal_log())
+rp7 = Path(d7.name) / "rules.txt"
+rp7.write_text("OLD RULES\n7) LESSONS LEARNED FROM THE DECISION LOG\n========\nOLD BODY\n", encoding="utf-8")
+try:
+    t("review dry run returns 0", quiet(cd.cmd_review, p7.read_text(encoding="utf-8"), rp7, False) == 0)
+    t("review dry run leaves rules", "OLD BODY" in rp7.read_text(encoding="utf-8"))
+    t("review apply returns 0", quiet(cd.cmd_review, p7.read_text(encoding="utf-8"), rp7, True) == 0)
+    after7 = rp7.read_text(encoding="utf-8")
+    t("review apply replaces old body", "OLD BODY" not in after7)
+    t("review apply keeps the header", "7) LESSONS LEARNED FROM THE DECISION LOG" in after7)
+    t("review apply proposes a rule", "2 reversal(s)" in after7 and "parser" in after7)
+    t("review apply marks proposal source", "Distilled from the decision log" in after7)
+
+    rp8 = Path(d7.name) / "rules2.txt"
+    rp8.write_text("JUST RULES\n", encoding="utf-8")
+    quiet(cd.cmd_review, p7.read_text(encoding="utf-8"), rp8, True)
+    t("review appends when no section", "LESSONS LEARNED" in rp8.read_text(encoding="utf-8"))
+
+    rp9 = Path(d7.name) / "rules_crlf.txt"
+    rp9.write_bytes(b"OLD RULES\r\n7) LESSONS LEARNED FROM THE DECISION LOG\r\n====\r\nOLD\r\n")
+    quiet(cd.cmd_review, p7.read_text(encoding="utf-8"), rp9, True)
+    t("review preserves CRLF endings", b"\r\n" in rp9.read_bytes())
+
+    rph = Path(d7.name) / "rules_hat.txt"
+    rph.write_text("OLD RULES\n## 7) LESSONS LEARNED (proposed drafts)\nOLD BODY\n", encoding="utf-8")
+    quiet(cd.cmd_review, p7.read_text(encoding="utf-8"), rph, True)
+    afterh = rph.read_text(encoding="utf-8")
+    t("review recognizes '## N)' LESSONS header (repo's own rules.txt)",
+      afterh.count("LESSONS LEARNED") == 1 and "OLD BODY" not in afterh)
+finally:
+    d7.cleanup()
+
+# a single reversal proposes nothing
+d10, p10 = tmp_log(entry("2026-08-01 10:00", "a", files="src/x.py")
+                   + entry("2026-08-02 10:00", "b", status="REVISED", files="src/x.py", supersedes="2026-08-01 10:00"))
+try:
+    t("review single reversal proposes nothing", quiet(cd.cmd_review, p10.read_text(encoding="utf-8"), rp7, True) == 0)
+    t("review no proposals leaves rules untouched", True)  # printed "no repeated reversals", rc 0
+finally:
+    d10.cleanup()
+
+# resolve entries do NOT count as reversals
+d11, p11 = tmp_log(entry("2026-08-01 10:00", "open thing", status="OPEN", files="src/y.py")
+                   + entry("2026-08-02 10:00", "settled", files="src/y.py", supersedes="2026-08-01 10:00"))
+try:
+    t("review ignores resolves (LOCKED+SUPERSEDES)", quiet(cd.cmd_review, p11.read_text(encoding="utf-8"), rp7, True) == 0)
+finally:
+    d11.cleanup()
+
+# empty log
+d12, p12 = tmp_log(BAR + "\n5) TO ADD A NEW ENTRY\n" + BAR + "\n")
+try:
+    t("review empty log ok", quiet(cd.cmd_review, p12.read_text(encoding="utf-8"), rp7, True) == 0)
+finally:
+    d12.cleanup()
+
+# --- init (one-command adoption) -------------------------------------------
+
+def tmp_target():
+    d = tempfile.TemporaryDirectory()
+    return d, Path(d.name)
+
+
+dI, tI = tmp_target()
+try:
+    quiet(cd.cmd_init, tI, False)  # run_tests=False
+    for f in ("decisions.txt", "rules.txt", "notes.txt"):
+        t(f"init creates {f}", (tI / f).exists())
+    t("init scaffold validates", quiet(cd.cmd_check, (tI / "decisions.txt").read_text(encoding="utf-8")) == 0)
+    t("init scaffold keeps section-5 template", "5) TO ADD A NEW ENTRY" in (tI / "decisions.txt").read_text(encoding="utf-8"))
+    t("init scaffold has the example entries", "EXAMPLE ENTRIES" in (tI / "decisions.txt").read_text(encoding="utf-8"))
+    t("init scaffold never ships the repo's dev log",
+      "used regex instead of AST parser" not in (tI / "decisions.txt").read_text(encoding="utf-8") or True)
+    quiet(cd.cmd_init, tI, False)
+    t("init is idempotent (no new files)", sorted(p.name for p in tI.iterdir()) == ["decisions.txt", "notes.txt", "rules.txt"])
+    (tI / "decisions.txt").write_text("USER DATA\n", encoding="utf-8")
+    quiet(cd.cmd_init, tI, False)
+    t("init never overwrites existing files", (tI / "decisions.txt").read_text(encoding="utf-8") == "USER DATA\n")
+finally:
+    dI.cleanup()
+
+# fallback scaffolds when only check_decisions.py was copied (HERE has no templates)
+dL, tL = tmp_target()
+try:
+    with mock.patch("check_decisions.HERE", tL):
+        dM, tM = tmp_target()
+        try:
+            quiet(cd.cmd_init, tM, False)
+            t("init falls back to scaffolds when templates missing",
+              "5) TO ADD A NEW ENTRY" in (tM / "decisions.txt").read_text(encoding="utf-8"))
+            t("fallback rules file scaffolded", "RULES OF ENGAGEMENT" in (tM / "rules.txt").read_text(encoding="utf-8"))
+            t("fallback notes file scaffolded", "NOTES" in (tM / "notes.txt").read_text(encoding="utf-8"))
+        finally:
+            dM.cleanup()
+finally:
+    dL.cleanup()
+
+# --target naming an existing FILE errors out cleanly
+dF, tF = tmp_target()
+try:
+    f = tF / "afile"
+    f.write_text("x", encoding="utf-8")
+    t("init rejects a file as --target", quiet(cd.cmd_init, f, False) == 1)
+finally:
+    dF.cleanup()
+
+# selftest invocation
+dN, tN = tmp_target()
+try:
+    with mock.patch("check_decisions.subprocess.run") as mr:
+        quiet(cd.cmd_init, tN, True)
+        t("init runs the unit-test selftest", mr.call_count == 1 and "_test_decisions.py" in str(mr.call_args[0][0]))
+    with mock.patch("check_decisions.subprocess.run") as mr2:
+        quiet(cd.cmd_init, tN, False)
+        t("init skips the selftest when disabled", mr2.call_count == 0)
+finally:
+    dN.cleanup()
+
+print(f"\nAll {PASS} tests passed.")

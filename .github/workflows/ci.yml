@@ -1,0 +1,34 @@
+name: CI
+
+# Runs on every push and pull request. Keeps the log honest and the tooling
+# green across platforms - a broken log or a failing test cannot hide.
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    name: tests + linter (py ${{ matrix.python-version }} / ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.9", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile check
+        run: python -m py_compile check_decisions.py start.py
+
+      - name: Unit tests
+        run: python _test_decisions.py
+
+      - name: Decision-log linter
+        run: python check_decisions.py
