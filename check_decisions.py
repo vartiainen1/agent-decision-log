@@ -199,9 +199,12 @@ def cmd_check(text):
             elif target["line"] >= e["line"]:
                 errors.append(f"{loc}: SUPERSEDES must point at an EARLIER entry "
                               f"(history is append-only - never point forward)")
-            elif status_token(target["fields"].get("STATUS", "")).upper() == "OPEN":
-                warnings.append(f"{loc}: SUPERSEDES target is OPEN - use --resolve to "
-                                f"settle an OPEN decision")
+            elif (status_token(target["fields"].get("STATUS", "")).upper() == "OPEN"
+                  and st.upper() == "REVISED"):
+                # LOCKED + SUPERSEDES->OPEN is the intended --resolve pattern;
+                # only a REVISED entry superseding an OPEN one is contradictory.
+                warnings.append(f"{loc}: REVISED entry supersedes an OPEN decision - "
+                                f"use --resolve to settle OPEN decisions")
             elif st.upper() == "OPEN":
                 warnings.append(f"{loc}: an OPEN decision should not supersede - use "
                                 f"REVISED when changing your mind")

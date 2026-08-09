@@ -131,6 +131,27 @@ t("LOCKED resolving OPEN validates",
   quiet(cd.cmd_check, entry("2026-08-01 10:00", "open one", status="OPEN")
         + entry("2026-08-02 10:00", "settled it", supersedes="2026-08-01 10:00")) == 0)
 
+def check_output(text):
+    old = sys.stdout
+    sys.stdout = io.StringIO()
+    try:
+        rc = cd.cmd_check(text)
+        return rc, sys.stdout.getvalue()
+    finally:
+        sys.stdout = old
+
+rc_rv, out_rv = check_output(
+    entry("2026-08-01 10:00", "open one", status="OPEN")
+    + entry("2026-08-02 10:00", "settled it", supersedes="2026-08-01 10:00"))
+t("resolve pattern emits no warning", "WARN" not in out_rv)
+
+rc_rv2, out_rv2 = check_output(
+    entry("2026-08-01 10:00", "locked one")
+    + entry("2026-08-02 10:00", "revised it", status="REVISED", supersedes="2026-08-01 10:00")
+    + entry("2026-08-03 10:00", "open target", status="OPEN")
+    + entry("2026-08-04 10:00", "weird revision", status="REVISED", supersedes="2026-08-03 10:00"))
+t("REVISED->OPEN warns", "REVISED entry supersedes an OPEN decision" in out_rv2)
+
 # --- cmd_has_open (gate) ---------------------------------------------------
 t("gate passes with no current OPEN", quiet(cd.cmd_has_open, entry("2026-08-01 10:00", "locked one")) == 0)
 t("gate fails with current OPEN", quiet(cd.cmd_has_open, S) == 1)
