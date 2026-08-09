@@ -161,6 +161,15 @@ Cross-link them in your setup notes.
   FILES: CHANGELOG.md
   STATUS: LOCKED.
 
+[2026-08-09 17:00] DECISION: apply batch 1+2 review fixes across both repos
+  REASON: external review scored error-log 87 / decision-log 90 and flagged real
+  issues: extract-area/hook marker mismatch, en-dash statuses, decision-log file
+  re-read in revise/resolve, generic review proposals, and missing fuzz/BOM/edge
+  tests. Batch 1+2 = correctness fixes + edge-case tests + doc notes.
+  FILES: check_decisions.py, check_errors.py, start.py, _test_decisions.py,
+         _test_errors.py, README.md, CHANGELOG.md
+  STATUS: OPEN.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================

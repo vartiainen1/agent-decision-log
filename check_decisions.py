@@ -56,8 +56,8 @@ LESSONS_HEADER = "LESSONS LEARNED"
 
 
 def load(path):
-    """Read a text file with UTF-8 fallback."""
-    return path.read_text(encoding="utf-8", errors="replace")
+    """Read a text file with UTF-8 fallback (BOM-safe)."""
+    return path.read_text(encoding="utf-8-sig", errors="replace")
 
 
 def parse_entries(text):
@@ -100,7 +100,7 @@ def status_token(status):
     """First word of a STATUS value, punctuation stripped ('LOCKED.' -> 'LOCKED')."""
     if not status:
         return ""
-    return re.split(r"\s", status.strip())[0].rstrip(".,;—-")
+    return re.split(r"\s", status.strip())[0].rstrip(".,;—–-")
 
 
 def by_tag(entries):
@@ -325,7 +325,8 @@ def cmd_revise(text, log_path, target_ts):
     reason = ask("REASON (why the change)", required=True)
     files = ask("FILES (files affected, optional)", default="")
     block = format_block(title, reason, files, target_ts, "REVISED")
-    text = log_path.read_text(encoding="utf-8", errors="replace")
+    # use the passed text (already read by the caller) - no re-read,
+    # matching cmd_decide and avoiding a stale-write window.
     log_path.write_text(insert_before_section5(text, block), encoding="utf-8")
     print("Logged (REVISED, supersedes " + target_ts + "):")
     print(block.rstrip("\n"))
@@ -345,7 +346,8 @@ def cmd_resolve(text, log_path, target_ts):
     reason = ask("REASON (why now / why this)", required=True)
     files = ask("FILES (files affected, optional)", default="")
     block = format_block(title, reason, files, target_ts, "LOCKED")
-    text = log_path.read_text(encoding="utf-8", errors="replace")
+    # use the passed text (already read by the caller) - no re-read,
+    # matching cmd_decide and avoiding a stale-write window.
     log_path.write_text(insert_before_section5(text, block), encoding="utf-8")
     print("Logged (LOCKED, resolves " + target_ts + "):")
     print(block.rstrip("\n"))
@@ -405,10 +407,16 @@ def cmd_review(text, rules_path, apply):
             continue
         dates = ", ".join(sorted(r["tag"] for r in revs))
         label = topic.split(":", 1)[1]
+        reasons = "\n".join(
+            f"   - {r['tag']}: {r['fields'].get('REASON', '').strip()}"
+            for r in sorted(revs, key=lambda r: r["tag"])
+            if r["fields"].get("REASON", "").strip()
+        )
         proposals.append(
             f"{len(proposals) + 1}. {label}\n"
             f"   {len(revs)} reversal(s) - decisions on '{label}' were LOCKED then changed\n"
             f"   (supersedes on {dates})\n"
+            f"   Why it kept changing:\n{reasons}\n"
             f"   Proposal: default to the most recent decision on {label} unless the\n"
             f"   context genuinely changed; when it does, log a REVISED entry that says why.\n"
         )
@@ -603,7 +611,13 @@ def cmd_init(target, run_tests=True):
     return 0
 
 def _extract_area(msg):
-    """Pull the last AREA:/LOG: marker value from a commit message, or None."""
+    """Marker value from a commit message, or None.
+
+    Matches the shell hooks exactly: the first line that carries an
+    AREA:/LOG: marker, then the LAST marker on that line (the hooks use
+    'grep -m1' for the line and a greedy 'sed s/^.*(AREA|LOG):' for the
+    marker). The CI gate and the local hook therefore gate on the same text.
+    """
     for line in msg.splitlines():
         marks = list(re.finditer(r"(?:AREA|LOG)\s*:", line, re.IGNORECASE))
         if not marks:

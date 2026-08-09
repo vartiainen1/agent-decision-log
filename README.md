@@ -87,7 +87,7 @@ a REVISED entry is visibly inconsistent - not blocked, just accountable.
 | Command | What it does |
 |---|---|
 | `python check_decisions.py` | validate the log (exit 0 = healthy) |
-| `--decide` | scaffold a new decision (interactive) |
+| `--decide` | scaffold a new decision (interactive; LOCKED + SUPERSEDES is the manual form of `--resolve`) |
 | `--revise <ts>` | change a decision: append REVISED superseding `ts` |
 | `--resolve <ts>` | settle an OPEN decision: append LOCKED superseding `ts` |
 | `--has-open` | gate: exit 1 if any OPEN decision is still current |
@@ -120,6 +120,9 @@ context genuinely changed; when it does, log a REVISED entry that says why.
 A human confirms them. Failures teach rules (agent-error-log `--lessons`);
 decisions teach rules (this `--review`) - both feed the same permanent memory.
 
+Each proposal also quotes the REASON behind every reversal, so the draft
+shows *why* the decision kept changing - not just that it did.
+
 ## FAQ
 
 **Why not just use a NOTES.md?** A notes file is where decisions go to be
@@ -144,7 +147,7 @@ system prompt.
 ## Development
 
 ```bash
-python _test_decisions.py          # run the unit tests (104, 100% pass expected)
+python _test_decisions.py          # run the unit tests (114, 100% pass expected)
 python check_decisions.py          # validate the log
 python -m py_compile check_decisions.py start.py
 ```

@@ -3,8 +3,10 @@ revise, resolve, recent, review, init.
 Run: python _test_decisions.py"""
 
 import io
+import random
 import sys
 import tempfile
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -428,5 +430,66 @@ p, td = _msg("feat: something (AREA: AUTH FLOW - JWT OVER OAUTH)\n")
 t("gate: case-insensitive match", quiet(cd.cmd_check_commit, S, p) == 0)
 td.cleanup()
 
+
+# --- review-driven robustness: fuzz + edge cases ----------------------------
+random.seed(11)
+base = datetime(2026, 1, 1, 0, 0)
+fuzz_parts = []
+for i in range(100):
+    ts = (base + timedelta(minutes=i)).strftime("%Y-%m-%d %H:%M")
+    fuzz_parts.append(entry(ts, f"topic {i}", status=random.choice(["LOCKED", "OPEN"])))
+t("fuzz: 100 random decisions validate clean",
+  quiet(cd.cmd_check, "\n\n".join(fuzz_parts)) == 0)
+
+with mock.patch("check_decisions.input",
+                side_effect=["manual resolve", "settled for good", "src/x.py", "LOCKED", "2026-08-09 15:00"]):
+    dX, pX = tmp_log(sample_log())
+    try:
+        t("decide LOCKED+SUPERSEDES writes resolve-style entry",
+          quiet(cd.cmd_decide, pX.read_text(encoding="utf-8"), pX) == 0)
+        addedX = pX.read_text(encoding="utf-8")
+        t("decide LOCKED+SUPERSEDES carries the back-link",
+          "SUPERSEDES: 2026-08-09 15:00" in addedX)
+        t("decide LOCKED+SUPERSEDES log still validates",
+          quiet(cd.cmd_check, addedX) == 0)
+    finally:
+        dX.cleanup()
+
+dU = tempfile.TemporaryDirectory()
+try:
+    pU = Path(dU.name) / "decisions.txt"
+    pU.write_bytes(b"\xef\xbb\xbf" + entry("2026-08-09 09:00", "bom decision").encode("utf-8"))
+    t("BOM-prefixed log parses", len(cd.parse_entries(cd.load(pU))) == 1)
+    pU2 = Path(dU.name) / "bad.txt"
+    pU2.write_bytes(b"[2026-08-09 10:00] DECISION: \xff\xfe broken\n"
+                    b"  REASON: r\n  STATUS: LOCKED.\n")
+    t("invalid UTF-8 bytes never crash the parser",
+      len(cd.parse_entries(cd.load(pU2))) == 1)
+finally:
+    dU.cleanup()
+
+t("status_token strips en-dash too", cd.status_token("OPEN\u2013").upper() == "OPEN")
+
+pW, tdW = _msg("feat: x (AREA: auth flow - JWT over OAuth) - but LOG: totally unlogged\n")
+t("check-commit: last marker wins (unlogged LOG later) blocked",
+  quiet(cd.cmd_check_commit, S, pW) == 1)
+tdW.cleanup()
+pW2, tdW2 = _msg("feat: x (AREA: totally unlogged) - and LOG: auth flow - JWT over OAuth\n")
+t("check-commit: last marker wins (logged LOG later) passes",
+  quiet(cd.cmd_check_commit, S, pW2) == 0)
+tdW2.cleanup()
+
+dY, pY = tmp_log(
+    entry("2026-08-01 10:00", "regex parser", files="src/parser.py", reason="fast enough for the file size")
+    + entry("2026-08-02 10:00", "moved to AST", status="REVISED", files="src/parser.py",
+            reason="file grew past the regex limit", supersedes="2026-08-01 10:00")
+    + entry("2026-08-03 10:00", "back to regex", status="REVISED", files="src/parser.py",
+            reason="AST overkill for one file", supersedes="2026-08-02 10:00"))
+try:
+    rcY, outY = capture(cd.cmd_review, pY.read_text(encoding="utf-8"), Path("nope-rules.txt"), False)
+    t("review proposal quotes REASONS", "Why it kept changing" in outY
+      and "file grew past the regex limit" in outY and "AST overkill for one file" in outY)
+finally:
+    dY.cleanup()
 
 print(f"\nAll {PASS} tests passed.")
