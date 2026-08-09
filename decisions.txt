@@ -151,6 +151,11 @@ Cross-link them in your setup notes.
   FILES: README.md
   STATUS: LOCKED.
 
+[2026-08-09 08:26] DECISION: add a README test-count drift guard to CI
+  REASON: the README's stated test count has drifted twice across the pair (90 vs 117; '100% pass expected' with no count) - a guard that fails CI on mismatch prevents the class of bug
+  FILES: _check_readme_count.py, .github/workflows/ci.yml
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
