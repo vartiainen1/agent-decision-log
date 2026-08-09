@@ -136,6 +136,11 @@ Cross-link them in your setup notes.
   FILES: check_decisions.py, .github/workflows/ci.yml, _test_decisions.py
   STATUS: LOCKED.
 
+[2026-08-09 07:36] DECISION: document the CI commit-message gate in AGENTS.md
+  REASON: agents must know the AREA marker is enforced server-side - this repo has no local hook, and docs should match the enforced reality
+  FILES: AGENTS.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
