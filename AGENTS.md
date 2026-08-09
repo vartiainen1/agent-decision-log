@@ -50,3 +50,16 @@ writes them as drafts. A human confirms them. Failures teach rules
 
 `agent-error-log` (errors.txt) records what BROKE - reactive memory. This log
 records what was CHOSEN - proactive memory. Use both.
+
+## 7) Committing (the AREA-marker gate)
+
+Every commit or PR title must carry an `AREA: <text>` marker naming a
+**logged decision**:
+
+    git commit -m "feat: <thing> (AREA: <decision topic>)"
+
+The CI workflow enforces this on master: a `commit-message gate` job re-runs
+`python check_decisions.py --check-commit` on every pushed commit and fails
+the push unless the marker names a decision already in `decisions.txt`. This
+repo has no local commit hook — CI is the gate. Log the decision first
+(`python check_decisions.py --decide`), then commit.
