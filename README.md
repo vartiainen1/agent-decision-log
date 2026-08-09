@@ -17,6 +17,7 @@ mistakes and its choices.
 [![python](https://img.shields.io/badge/python-3.9%20%7C%203.11%20%7C%203.12-3776AB)](https://github.com/vartiainen1/agent-decision-log/actions)
 [![dependencies-0](https://img.shields.io/badge/dependencies-0-brightgreen)](https://github.com/vartiainen1/agent-decision-log)
 [![Visitors](https://visitor-badge.laobi.icu/badge?page_id=vartiainen1.agent-decision-log&left_text=Visitors&right_color=2F80ED)](https://github.com/vartiainen1/agent-decision-log)
+[![companion](https://img.shields.io/badge/companion-agent--error--log-2ea44f)](https://github.com/vartiainen1/agent-error-log)
 
 ## Why
 

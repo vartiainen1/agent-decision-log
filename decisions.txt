@@ -127,6 +127,10 @@ Cross-link them in your setup notes.
   FILES: CHANGELOG.md
   STATUS: LOCKED.
 
+[2026-08-09 06:55] DECISION: add a companion badge to the README badge row linking agent-error-log
+  REASON: the ecosystem cross-link should be visible at the top of the README, not only in the bottom Companion section; mirrors the sibling's badge row
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
