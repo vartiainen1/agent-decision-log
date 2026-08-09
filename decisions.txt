@@ -156,6 +156,11 @@ Cross-link them in your setup notes.
   FILES: _check_readme_count.py, .github/workflows/ci.yml
   STATUS: LOCKED.
 
+[2026-08-09 08:40] DECISION: release v0.3.0 of agent-decision-log with the drift guard
+  REASON: the drift guard and the explicit test-count fix are verified (104 tests, lint clean, 9/9 checks green) - time to ship them
+  FILES: CHANGELOG.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
