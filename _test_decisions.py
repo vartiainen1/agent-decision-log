@@ -492,4 +492,29 @@ try:
 finally:
     dY.cleanup()
 
+# --- cmd_stats (analytics) ---------------------------------------------------
+rc_s, out_s = capture(cd.cmd_stats, S)
+t("stats on sample log returns 0", rc_s == 0)
+t("stats counts the status mix", "LOCKED 1 | OPEN 1 | REVISED 1" in out_s)
+t("stats reports current OPEN", "1 current OPEN decision(s)" in out_s)
+t("stats counts superseded entries", "superseded  : 1" in out_s)
+t("stats computes the reversal rate", "of 2 settled, 50.0% were REVISED" in out_s)
+t("stats averages LOCKED->REVISED time", "avg LOCKED -> REVISED : 0.8 day(s)" in out_s)
+t("stats lists volatile topics", "parser.py (1 reversal(s))" in out_s)
+
+chainS = (
+    entry("2026-08-01 10:00", "regex parser", files="src/parser.py")
+    + entry("2026-08-02 10:00", "moved to AST", status="REVISED", files="src/parser.py",
+            supersedes="2026-08-01 10:00")
+    + entry("2026-08-03 10:00", "back to regex", status="REVISED", files="src/parser.py",
+            supersedes="2026-08-02 10:00"))
+rc_c, out_c = capture(cd.cmd_stats, chainS)
+t("stats on a 2-reversal chain", "of 3 settled, 66.7% were REVISED" in out_c
+  and "parser.py (2 reversal(s))" in out_c)
+
+rc_u, out_u = capture(cd.cmd_stats, entry("yesterday", "odd tag", status="OPEN"))
+t("stats handles unparseable tags", rc_u == 0
+  and "avg LOCKED -> REVISED : n/a" in out_u)
+t("stats on empty log ok", quiet(cd.cmd_stats, "") == 0)
+
 print(f"\nAll {PASS} tests passed.")

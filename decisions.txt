@@ -170,6 +170,13 @@ Cross-link them in your setup notes.
          _test_errors.py, README.md, CHANGELOG.md
   STATUS: OPEN.
 
+[2026-08-09 18:00] DECISION: add a --stats analytics command to the decision-log
+  REASON: external reviewer suggested analytics (reversal rate, average time from
+  LOCKED to REVISED, most volatile topics) - turns the log into a decision-metrics
+  dashboard. Batch 1+2 review round 3.
+  FILES: check_decisions.py, _test_decisions.py, README.md, CHANGELOG.md, AGENTS.md
+  STATUS: OPEN.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
