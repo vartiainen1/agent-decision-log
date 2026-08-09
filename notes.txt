@@ -8,3 +8,5 @@
 
 ## Session notes
 SESSION NOTE (2026-08-09): built agent-decision-log (initial release, [Unreleased]). Fork rule, three states (LOCKED/OPEN/REVISED), append-only with SUPERSEDES back-links, boot recall in start.py, --review compounding loop. Companion to agent-error-log; cross-linked in README. 95 unit tests.
+
+SESSION NOTE (2026-08-09): v0.4.0 released (PR #12 -> master 790fc5b). Bundles the --stats analytics command, the _topic_of heuristic docs, and the OPEN-decision resolve chore accumulated since v0.3.0. Release decision dogfooded first (26 decisions, lint 0/0). Master CI 9/9 green - commit-message gate success, drift guard success, release workflow tagged v0.4.0 and published the draft (draft: false). 124 tests unchanged. Pattern worth remembering: small verified batches accumulate in [Unreleased], then ship in one version bump.
