@@ -29,20 +29,22 @@ with SUPERSEDES: <timestamp> pointing back at the old one.
 ## 7) LESSONS LEARNED (proposed drafts)
 ================================================================================
 Distilled from the decision log by: python check_decisions.py --review [--apply]
-Generated: 2026-08-09  |  source: 10 decision(s).
+Generated: 2026-08-09  |  source: 28 decision(s).
 
 1. config.yaml
    2 reversal(s) - decisions on 'config.yaml' were LOCKED then changed
    (supersedes on 2026-08-12 09:00, 2026-08-13 10:15)
+   Why it kept changing:
+   - 2026-08-12 09:00: typed values and no tag soup; CI templates already use it
+   - 2026-08-13 10:15: team convention and the internal tooling reads YAML natively
    Proposal: default to the most recent decision on config.yaml unless the
    context genuinely changed; when it does, log a REVISED entry that says why.
 2. parser.py
    3 reversal(s) - decisions on 'parser.py' were LOCKED then changed
    (supersedes on 2026-08-10 09:15, 2026-08-11 10:00, 2026-08-12 11:30)
+   Why it kept changing:
+   - 2026-08-10 09:15: file grew past 200 lines; regex became unmaintainable
+   - 2026-08-11 10:00: parser file shrank to 40 lines after cleanup; AST setup felt like overhead
+   - 2026-08-12 11:30: refactor split the parser; regex state scattered across five functions
    Proposal: default to the most recent decision on parser.py unless the
    context genuinely changed; when it does, log a REVISED entry that says why.
-
-================================================================================
-TO ADD A NEW RULE
-================================================================================
-Append a numbered section above this line, or propose via --review --apply.
