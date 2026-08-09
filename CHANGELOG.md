@@ -6,6 +6,12 @@ top of this file is the single source of truth - releases are cut from it by
 
 ## [Unreleased]
 
+### Docs
+
+- Document the PR-based push workflow in the README (branch -> PR ->
+  squash merge with the `(AREA: <logged decision>)` marker) now that
+  branch protection blocks direct pushes to `master`.
+
 ## [0.4.0] - 2026-08-09
 
 ### Fixed
