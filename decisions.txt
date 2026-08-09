@@ -207,6 +207,11 @@ Cross-link them in your setup notes.
   FILES: CHANGELOG.md
   STATUS: LOCKED.
 
+[2026-08-09 10:18] DECISION: add a PR-based push workflow section to the README
+  REASON: live-page verification flagged the gap: the error-log README documents its PR flow while this repo's README does not, despite the same enforcement (branch protection + CI gate); the FAQ also still claimed 'no git gate', which the CI gate now contradicts
+  FILES: README.md, CHANGELOG.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================

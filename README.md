@@ -143,8 +143,10 @@ rules. The format is the easy part; recall is the product.
 
 **Why soft enforcement?** A bug without a log entry is clearly wrong; a
 decision without a log entry is usually *correct* - most choices are trivial.
-So there is no git gate; the accountability loop is boot-time recall: the
-agent's own history is shown back at session start.
+So there is no local git hook (unlike the sibling repo); the mechanical
+backstop is the CI commit-message gate on `master` merges, and the
+accountability loop is boot-time recall: the agent's own history is shown
+back at session start.
 
 **Does it work with any agent?** Yes - any agent that can read text and run
 shell commands. Point it at the repo in AGENTS.md, or paste rules.txt into a
@@ -162,6 +164,29 @@ CI runs tests + linter on Ubuntu and Windows across Python 3.9 / 3.11 / 3.12.
 Releases are cut from CHANGELOG.md by a workflow that creates the tag and a
 draft GitHub Release - see `CHANGELOG.md` and the workflow in
 `.github/workflows/release.yml`.
+
+### Shipping a change (PR workflow)
+
+With branch protection live, **direct pushes to `master` are rejected** -
+`GH006: Protected branch update failed ... N of N required status checks are
+expected` - because a fresh commit has no CI checks yet. Every change lands
+via pull request:
+
+1. **Branch off `master`** and commit with the `(AREA: <logged decision>)`
+   marker in the message (matching a decision in `decisions.txt`):
+   `git commit -m "feat: ... (AREA: add a --stats analytics command)"`.
+2. **Push the branch, open a PR** against `master`. The six
+   `tests + linter` matrix jobs run on the PR head.
+3. **Squash-merge** once checks are green, keeping the `(AREA: ...)` marker in
+   the squash title. The merge push re-runs CI **and the commit-message
+   gate** on `master` - a missing marker leaves the gate red.
+
+This repo ships no local commit-msg hook (deliberate: most decisions are
+trivial, so boot-time recall is the discipline). The CI gate is the
+mechanical backstop for the marker - which is why it must survive into the
+squash title. The gate job skips PR events on purpose: PRs are gated when
+the merge lands, so the squash title is exactly what gets re-checked on
+`master`.
 
 ## Companion tool
 
