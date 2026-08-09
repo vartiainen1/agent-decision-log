@@ -401,4 +401,32 @@ try:
 finally:
     dN.cleanup()
 
+# --- cmd_check_commit (CI gate) ---------------------------------------------
+def _msg(content):
+    td = tempfile.TemporaryDirectory()
+    p = Path(td.name) / "msg.txt"
+    p.write_text(content, encoding="utf-8")
+    return p, td
+
+t("gate: missing message file fails", quiet(cd.cmd_check_commit, S, Path("definitely-not-here.txt")) == 1)
+p, td = _msg("chore: tidy up\n")
+t("gate: no AREA marker blocked", quiet(cd.cmd_check_commit, S, p) == 1)
+td.cleanup()
+p, td = _msg("feat: something (AREA: auth flow - JWT over OAuth)\n")
+t("gate: AREA naming logged decision passes", quiet(cd.cmd_check_commit, S, p) == 0)
+td.cleanup()
+p, td = _msg("feat: something (AREA: auth flow)\n")
+t("gate: partial title match passes", quiet(cd.cmd_check_commit, S, p) == 0)
+td.cleanup()
+p, td = _msg("feat: something (AREA: totally different thing)\n")
+t("gate: unlogged area blocked", quiet(cd.cmd_check_commit, S, p) == 1)
+td.cleanup()
+p, td = _msg("feat: something (LOG: moved parser to AST)\n")
+t("gate: LOG: marker accepted", quiet(cd.cmd_check_commit, S, p) == 0)
+td.cleanup()
+p, td = _msg("feat: something (AREA: AUTH FLOW - JWT OVER OAUTH)\n")
+t("gate: case-insensitive match", quiet(cd.cmd_check_commit, S, p) == 0)
+td.cleanup()
+
+
 print(f"\nAll {PASS} tests passed.")

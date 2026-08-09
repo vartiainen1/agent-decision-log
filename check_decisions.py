@@ -24,6 +24,9 @@ CHOSEN and WHY (proactive memory). Run from the folder holding this script
     python check_decisions.py --init [--target DIR]        one-command adoption:
                                                            scaffold the templates,
                                                            health-check, self-test
+    python check_decisions.py --check-commit FILE          gate: the commit message
+                                                           in FILE must name a
+                                                           logged decision
 
 Exit codes: 0 = ok / gate passed, 1 = validation errors or gate failed.
 """
@@ -599,6 +602,47 @@ def cmd_init(target, run_tests=True):
     print("        bootstrap. Behavior rules live in rules.txt.")
     return 0
 
+def _extract_area(msg):
+    """Pull the last AREA:/LOG: marker value from a commit message, or None."""
+    for line in msg.splitlines():
+        marks = list(re.finditer(r"(?:AREA|LOG)\s*:", line, re.IGNORECASE))
+        if not marks:
+            continue
+        area = line[marks[-1].end():]
+        area = re.sub(r"[),.;:]+\s*$", "", area)
+        return re.sub(r"\s+", " ", area).strip()
+    return None
+
+
+def cmd_check_commit(text, msg_path):
+    """Gate on a commit message file: exit 0 only if it names a logged decision.
+
+    Server-side twin of the log-before-change rule so the AREA-marker
+    convention is mechanically enforced in CI (this repo has no local commit
+    hook). The message must carry an 'AREA:' (or 'LOG:') marker naming a
+    decision that is already logged in decisions.txt.
+    """
+    if not msg_path.exists():
+        print(f"commit-gate: message file not found: {msg_path}")
+        return 1
+    area = _extract_area(load(msg_path))
+    if not area:
+        print("commit-gate BLOCKED: no 'AREA:' marker in the commit message.")
+        print("  Log the decision first:  python check_decisions.py --decide")
+        print('  Then commit with:         git commit -m "... (AREA: <decision topic>)"')
+        return 1
+    # Mirrors the --has-entry search: the marker must name a logged decision.
+    needle = area.lower()
+    found = [e for e in parse_entries(text)
+             if needle in (e["title"] + " " + e["tag"]).lower()]
+    if found:
+        print(f'commit-gate OK: "{area}" names a logged decision - change may land.')
+        return 0
+    print(f'commit-gate BLOCKED: "{area}" matches no logged decision.')
+    print("  LOG BEFORE CHANGING: add the decision first (python check_decisions.py --decide),")
+    print("  then commit again.")
+    return 1
+
 
 def main():
     ap = argparse.ArgumentParser(
@@ -631,6 +675,9 @@ def main():
                     help="with --init: directory to adopt (default: current directory)")
     ap.add_argument("--no-tests", action="store_true",
                     help="with --init: skip the tooling's unit-test run")
+    ap.add_argument("--check-commit", metavar="FILE",
+                    help="gate: exit 0 only if the commit message in FILE names "
+                         "a logged decision (AREA:/LOG: marker)")
     args = ap.parse_args()
 
     if args.init:
@@ -641,6 +688,9 @@ def main():
         print(f"missing decision log: {log_path}")
         return 1
     text = load(log_path)
+
+    if args.check_commit:
+        return cmd_check_commit(text, Path(args.check_commit))
 
     if args.decide:
         return cmd_decide(text, log_path)
