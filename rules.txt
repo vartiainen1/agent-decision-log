@@ -27,8 +27,20 @@ with SUPERSEDES: <timestamp> pointing back at the old one.
   agent-error-log gates commits server-side; keep the discipline here too).
 
 ## 7) LESSONS LEARNED (proposed drafts)
-Drafts proposed by `python check_decisions.py --review --apply` land here.
-A human confirms them; until then they are proposals, not rules.
+================================================================================
+Distilled from the decision log by: python check_decisions.py --review [--apply]
+Generated: 2026-08-09  |  source: 10 decision(s).
+
+1. config.yaml
+   2 reversal(s) - decisions on 'config.yaml' were LOCKED then changed
+   (supersedes on 2026-08-12 09:00, 2026-08-13 10:15)
+   Proposal: default to the most recent decision on config.yaml unless the
+   context genuinely changed; when it does, log a REVISED entry that says why.
+2. parser.py
+   3 reversal(s) - decisions on 'parser.py' were LOCKED then changed
+   (supersedes on 2026-08-10 09:15, 2026-08-11 10:00, 2026-08-12 11:30)
+   Proposal: default to the most recent decision on parser.py unless the
+   context genuinely changed; when it does, log a REVISED entry that says why.
 
 ================================================================================
 TO ADD A NEW RULE

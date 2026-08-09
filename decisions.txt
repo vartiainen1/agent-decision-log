@@ -88,6 +88,35 @@ Cross-link them in your setup notes.
   SUPERSEDES: 2026-08-09 15:00
   STATUS: LOCKED.
 
+[2026-08-11 10:00] DECISION: back to regex for the small parser
+  REASON: parser file shrank to 40 lines after cleanup; AST setup felt like overhead
+  FILES: src/parser.py
+  SUPERSEDES: 2026-08-10 09:15
+  STATUS: REVISED.
+
+[2026-08-12 11:30] DECISION: AST after all - parser split across modules
+  REASON: refactor split the parser; regex state scattered across five functions
+  FILES: src/parser.py
+  SUPERSEDES: 2026-08-11 10:00
+  STATUS: REVISED.
+
+[2026-08-11 14:00] DECISION: YAML for project config
+  REASON: readable, human-editable, matches the ecosystem defaults
+  FILES: config.yaml
+  STATUS: LOCKED.
+
+[2026-08-12 09:00] DECISION: TOML for config
+  REASON: typed values and no tag soup; CI templates already use it
+  FILES: config.yaml
+  SUPERSEDES: 2026-08-11 14:00
+  STATUS: REVISED.
+
+[2026-08-13 10:15] DECISION: back to YAML for config
+  REASON: team convention and the internal tooling reads YAML natively
+  FILES: config.yaml
+  SUPERSEDES: 2026-08-12 09:00
+  STATUS: REVISED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
