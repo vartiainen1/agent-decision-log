@@ -184,6 +184,24 @@ Cross-link them in your setup notes.
   FILES: check_decisions.py, README.md, CHANGELOG.md
   STATUS: OPEN.
 
+[2026-08-09 09:55] DECISION: batch 1+2 review fixes verified - OPEN decision resolved
+  REASON: all 6 review fixes + fuzz tests + docs shipped via PR #16/#8; gates and drift guards green on master; reviewer list closed
+  FILES: check_errors.py, check_decisions.py, start.py, _test_errors.py, _test_decisions.py, README.md, CHANGELOG.md
+  SUPERSEDES: 2026-08-09 17:00
+  STATUS: LOCKED.
+
+[2026-08-09 09:56] DECISION: --stats command verified - OPEN decision resolved
+  REASON: shipped via PR #9 with 10 tests (124 total); live demo on the real log works; drift guard green
+  FILES: check_decisions.py, _test_decisions.py, README.md, CHANGELOG.md, AGENTS.md
+  SUPERSEDES: 2026-08-09 18:00
+  STATUS: LOCKED.
+
+[2026-08-09 09:57] DECISION: _topic_of docs verified - OPEN decision resolved
+  REASON: docstring + README note + CHANGELOG Docs shipped via PR #10; docs-only, 124 tests unchanged, gate green
+  FILES: check_decisions.py, README.md, CHANGELOG.md
+  SUPERSEDES: 2026-08-09 18:30
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
