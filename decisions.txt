@@ -250,6 +250,11 @@ Cross-link them in your setup notes.
   FILES: README.md
   STATUS: LOCKED.
 
+[2026-08-10 22:25] DECISION: typed refactor - type hints and dataclasses
+  REASON: external review scored structure 8/20; dataclasses + type hints are stdlib-compatible and keep single-file adoption intact
+  FILES: check_decisions.py
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
