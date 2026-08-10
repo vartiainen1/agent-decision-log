@@ -7,6 +7,7 @@ top of this file is the single source of truth - releases are cut from it by
 ## [Unreleased]
 
 ### Fixed
+- stdin reconfigured to UTF-8 on Windows: piped unicode no longer double-encodes into decisions.txt (stdout-only reconfigure bug).
 - L10: `load()` no longer crashes on a locked/unreadable log file (graceful `OSError` fallback; regression tests added).
 
 

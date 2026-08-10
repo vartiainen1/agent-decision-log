@@ -159,7 +159,7 @@ copy logs next to itself. Point at your real log from anywhere with
 ## Development
 
 ```bash
-python _test_decisions.py          # run the unit tests (127, 100% pass expected)
+python _test_decisions.py          # run the unit tests (131, 100% pass expected)
 python check_decisions.py          # validate the log
 python -m py_compile check_decisions.py start.py
 ```

@@ -470,6 +470,19 @@ finally:
 
 t("status_token strips en-dash too", cd.status_token("OPEN\u2013").upper() == "OPEN")
 
+# Windows console safety: stdin must be UTF-8 too (regression - same class
+# as the stdout-only reconfigure bug fixed in error-log).
+t("stdin is reconfigured to utf-8", getattr(sys.stdin, "encoding", "utf-8") == "utf-8")
+with mock.patch("check_decisions.input", side_effect=["café 8 — dash", "unicode reason", "src/x.py", "LOCKED", ""]):
+    dv, pv = tmp_log(sample_log())
+    try:
+        t("decide stores unicode as proper utf-8 bytes", quiet(cd.cmd_decide, pv.read_text(encoding="utf-8"), pv) == 0)
+        rawv = pv.read_bytes()
+        t("decide unicode bytes are single-encoded", b"caf\xc3\xa9 8 \xe2\x80\x94 dash" in rawv)
+        t("decide unicode round-trips as text", "café 8 — dash" in rawv.decode("utf-8"))
+    finally:
+        dv.cleanup()
+
 pW, tdW = _msg("feat: x (AREA: auth flow - JWT over OAuth) - but LOG: totally unlogged\n")
 t("check-commit: last marker wins (unlogged LOG later) blocked",
   quiet(cd.cmd_check_commit, S, pW) == 1)
