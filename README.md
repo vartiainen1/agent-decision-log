@@ -155,6 +155,9 @@ system prompt.
 Default paths resolve relative to the script location (`HERE`), so a scratch
 copy logs next to itself. Point at your real log from anywhere with
 `--log path/to/decisions.txt`.
+**Can I log unicode (café, em-dash) on Windows?** Yes — `stdin` is
+reconfigured to UTF-8 like `stdout`, so piped unicode decision text is
+stored as-is, never double-encoded.
 
 ## Development
 
