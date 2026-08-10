@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The version at the
 top of this file is the single source of truth - releases are cut from it by
 `.github/workflows/release.yml`.
 
-## [Unreleased]
+## [0.5.0] - 2026-08-11
 
 ### Added
 - Professional packaging: `pyproject.toml` (version derived from the git tag via
