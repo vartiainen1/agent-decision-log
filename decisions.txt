@@ -255,6 +255,12 @@ Cross-link them in your setup notes.
   FILES: check_decisions.py
   STATUS: LOCKED.
 
+
+[2026-08-11 09:30] DECISION: Ship professional packaging - pyproject, defaults guard, publish workflow
+  REASON: close the distribution gap - pip-installable while keeping single-file + zero-dep promises
+  FILES: pyproject.toml, check_decisions.py, ci.yml, publish.yml, README.md, CHANGELOG.md
+  STATUS: LOCKED
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
