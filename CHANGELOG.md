@@ -8,6 +8,15 @@ top of this file is the single source of truth - releases are cut from it by
 
 ### Docs
 
+
+### Fixed
+
+- Concurrent `--decide`/`--revise`/`--resolve` appends no longer lose
+  entries: the append is serialized by a cross-process lock file
+  (`<log>.lock`, stdlib-only, atomic `O_CREAT|O_EXCL` create with 5s wait
+  and stale-lock recovery) and the log is re-read inside the lock before
+  writing (lost-update fix).
+
 - Document the PR-based push workflow in the README (branch -> PR ->
   squash merge with the `(AREA: <logged decision>)` marker) now that
   branch protection blocks direct pushes to `master`.

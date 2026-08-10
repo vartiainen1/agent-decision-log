@@ -517,4 +517,59 @@ t("stats handles unparseable tags", rc_u == 0
   and "avg LOCKED -> REVISED : n/a" in out_u)
 t("stats on empty log ok", quiet(cd.cmd_stats, "") == 0)
 
+
+# --- L9 regression: concurrent decides never lose an entry -----------------
+import queue as _q
+import shutil as _sh
+import threading as _th
+import time as _time
+
+
+def _concurrent_decide_all_survive():
+    d = tempfile.mkdtemp()
+    try:
+        log = Path(d) / "decisions.txt"
+        log.write_text(sample_log(), encoding="utf-8")
+        per_thread = {}
+        barrier = _th.Barrier(3)
+        results = {}
+
+        def fake_input(prompt="", **kw):
+            return per_thread[_th.current_thread().name].get(timeout=10)
+
+        def worker(tag, answers):
+            q = _q.Queue()
+            for a in answers:
+                q.put(a)
+            per_thread[_th.current_thread().name] = q
+            barrier.wait()
+            try:
+                # same stale-text-before-write window as the error-log test
+                text = log.read_text(encoding="utf-8")
+                _time.sleep(0.1)
+                results[tag] = cd.cmd_decide(text, log)
+            except Exception as ex:
+                results[tag] = f"EXC {type(ex).__name__}"
+
+        # patch print to a no-op so the threads' 'Logged:' output cannot
+        # leak into - or race with - the main thread's stdout (quiet()
+        # swaps the GLOBAL sys.stdout and is not thread-safe).
+        with mock.patch("check_decisions.print", lambda *a, **k: None), \
+             mock.patch("check_decisions.input", fake_input):
+            t1 = _th.Thread(target=worker, args=("A", ["dec A", "reason A", "src/a.py", "LOCKED", ""]))
+            t2 = _th.Thread(target=worker, args=("B", ["dec B", "reason B", "src/b.py", "LOCKED", ""]))
+            t1.start(); t2.start()
+            barrier.wait()
+            t1.join(); t2.join()
+        final = log.read_text(encoding="utf-8")
+        both = "DECISION: dec A" in final and "DECISION: dec B" in final
+        lock_gone = not log.with_name(log.name + ".lock").exists()
+        return (both and lock_gone
+                and results.get("A") == 0 and results.get("B") == 0)
+    finally:
+        _sh.rmtree(d, ignore_errors=True)
+
+
+t("L9 concurrent decides lose nothing (both entries + lock cleaned)", _concurrent_decide_all_survive())
+
 print(f"\nAll {PASS} tests passed.")
