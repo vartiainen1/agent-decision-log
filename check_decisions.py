@@ -60,8 +60,16 @@ LESSONS_HEADER = "LESSONS LEARNED"
 
 
 def load(path):
-    """Read a text file with UTF-8 fallback (BOM-safe)."""
-    return path.read_text(encoding="utf-8-sig", errors="replace")
+    """Read a text file with UTF-8 fallback (BOM-safe).
+
+    Returns "" if the file cannot be read (e.g. locked by another
+    process on Windows) instead of crashing - a locked log degrades to
+    empty, never raises (L10).
+    """
+    try:
+        return path.read_text(encoding="utf-8-sig", errors="replace")
+    except OSError:
+        return ""
 
 
 def parse_entries(text):
