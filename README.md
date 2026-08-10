@@ -197,7 +197,7 @@ the merge lands, so the squash title is exactly what gets re-checked on
 - [**agent-error-log**](https://github.com/vartiainen1/agent-error-log) -
   logs what broke, mechanically enforced by a git hook. Reactive memory.
 
-Two files, same shape, same lifecycle verbs: one prevents repeating
+Two tools, same shape, same lifecycle verbs: one prevents repeating
 failures, this one prevents repeating exploration.
 
 ## License

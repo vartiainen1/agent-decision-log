@@ -235,6 +235,11 @@ Cross-link them in your setup notes.
   FILES: README.md
   STATUS: LOCKED.
 
+[2026-08-10 19:26] DECISION: doc - README companion wording says two files, should say two tools
+  REASON: companion section says 'Two files, same shape' but it is two tools/repos; error-log README says 'Two tools'
+  FILES: README.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
