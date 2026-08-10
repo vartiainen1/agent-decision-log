@@ -240,6 +240,11 @@ Cross-link them in your setup notes.
   FILES: README.md
   STATUS: LOCKED.
 
+[2026-08-10 19:40] DECISION: fix unicode stdin double-encoding on Windows
+  REASON: same stdout-only reconfigure class as error-log; piped unicode DECISION text would mojibake into decisions.txt on Windows
+  FILES: check_decisions.py, _test_decisions.py
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
