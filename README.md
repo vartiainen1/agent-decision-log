@@ -151,6 +151,10 @@ back at session start.
 **Does it work with any agent?** Yes - any agent that can read text and run
 shell commands. Point it at the repo in AGENTS.md, or paste rules.txt into a
 system prompt.
+**I copied the tool to a scratch folder — will it touch my real repo?** No.
+Default paths resolve relative to the script location (`HERE`), so a scratch
+copy logs next to itself. Point at your real log from anywhere with
+`--log path/to/decisions.txt`.
 
 ## Development
 

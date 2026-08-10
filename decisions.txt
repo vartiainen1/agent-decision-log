@@ -230,6 +230,11 @@ Cross-link them in your setup notes.
   FILES: check_decisions.py
   STATUS: LOCKED
 
+[2026-08-10 19:14] DECISION: doc - HERE-relative default paths FAQ
+  REASON: script-dir (HERE) defaults are undocumented; a scratch copy run without --log writes into the real repo log
+  FILES: README.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
