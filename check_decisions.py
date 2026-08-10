@@ -34,9 +34,11 @@ Exit codes: 0 = ok / gate passed, 1 = validation errors or gate failed.
 """
 
 import argparse
+import os
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -147,6 +149,78 @@ def find_section5(text):
         if l.strip() == SECTION5:
             return i
     return None
+
+
+def _with_log_lock(log_path, fn):
+    """Serialize a read-modify-write on log_path across processes.
+
+    Creates a sibling '<name>.lock' file atomically (O_CREAT|O_EXCL, which
+    fails if the lock already exists) and retries for up to 5s; the lock is
+    removed in a finally block. A stale lock older than 30s (crashed writer)
+    is broken and reclaimed. Returns fn()'s result, or 1 on timeout.
+    """
+    lock_path = log_path.with_name(log_path.name + ".lock")
+    deadline = time.time() + 5.0
+    while True:
+        try:
+            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.close(fd)
+            break
+        except FileExistsError:
+            try:
+                if time.time() - lock_path.stat().st_mtime > 30:
+                    # Atomically claim the stale lock by renaming it
+                    # aside: only one contender can win the rename, so
+                    # nobody can ever unlink a lock another process has
+                    # just created (TOCTOU hardening). The .stale file
+                    # is garbage by definition - unlinking it is safe.
+                    stale = lock_path.with_name(lock_path.name + ".stale")
+                    try:
+                        stale.unlink()
+                    except OSError:
+                        pass
+                    os.rename(lock_path, stale)
+                    try:
+                        stale.unlink()
+                    except OSError:
+                        pass
+                    continue
+            except OSError:
+                pass
+            if time.time() > deadline:
+                print(f"timed out waiting for log lock: {lock_path}")
+                return 1
+            time.sleep(0.05)
+    try:
+        return fn()
+    finally:
+        try:
+            lock_path.unlink()
+        except OSError:
+            pass
+
+
+def _locked_append(log_path, block, validate=None):
+    """Append a block under the log lock, re-reading inside the lock.
+
+    The read-modify-write (load -> insert_before_section5 -> write) is not
+    atomic; two concurrent appends could both read the same text and one
+    entry would be silently lost. Locking and re-reading inside the lock
+    makes concurrent appends safe (lost-update fix, L9).
+
+    `validate(text) -> (ok, msg)` is optional and runs against the FRESH
+    text inside the lock, so validation and the write can never disagree
+    under concurrency (caller-passed text may be stale by write time).
+    """
+    def do_write():
+        text = load(log_path)
+        if validate is not None:
+            ok, msg = validate(text)
+            if not ok:
+                print(msg)
+                return 1
+        log_path.write_text(insert_before_section5(text, block), encoding="utf-8")
+    return _with_log_lock(log_path, do_write)
 
 
 def insert_before_section5(text, block):
@@ -307,12 +381,11 @@ def cmd_decide(text, log_path):
     if st == "REVISED" and not supersedes:
         print("A REVISED entry must supersede an earlier decision - aborting.")
         raise SystemExit(1)
-    ok, msg = _validate_ss(text, supersedes)
-    if supersedes and not ok:
-        print(msg)
-        return 1
     block = format_block(title, reason, files, supersedes, st)
-    log_path.write_text(insert_before_section5(text, block), encoding="utf-8")
+    rc = _locked_append(log_path, block,
+                        validate=lambda t: _validate_ss(t, supersedes))
+    if rc:
+        return rc
     print("Logged:")
     print(block.rstrip("\n"))
     return 0
@@ -327,9 +400,16 @@ def cmd_revise(text, log_path, target_ts):
     reason = ask("REASON (why the change)", required=True)
     files = ask("FILES (files affected, optional)", default="")
     block = format_block(title, reason, files, target_ts, "REVISED")
-    # use the passed text (already read by the caller) - no re-read,
-    # matching cmd_decide and avoiding a stale-write window.
-    log_path.write_text(insert_before_section5(text, block), encoding="utf-8")
+    def _check(t):
+        if target_ts not in by_tag(parse_entries(t)):
+            return False, f"no entry with timestamp '{target_ts}' - check decisions.txt"
+        return True, ""
+    # write under the cross-process log lock with a fresh re-read inside
+    # the lock, so a concurrent append can never be clobbered (L9), and
+    # validate the target against that FRESH text, not the stale param.
+    rc = _locked_append(log_path, block, validate=_check)
+    if rc:
+        return rc
     print("Logged (REVISED, supersedes " + target_ts + "):")
     print(block.rstrip("\n"))
     return 0
@@ -348,9 +428,16 @@ def cmd_resolve(text, log_path, target_ts):
     reason = ask("REASON (why now / why this)", required=True)
     files = ask("FILES (files affected, optional)", default="")
     block = format_block(title, reason, files, target_ts, "LOCKED")
-    # use the passed text (already read by the caller) - no re-read,
-    # matching cmd_decide and avoiding a stale-write window.
-    log_path.write_text(insert_before_section5(text, block), encoding="utf-8")
+    def _check(t):
+        if target_ts not in by_tag(parse_entries(t)):
+            return False, f"no entry with timestamp '{target_ts}' - check decisions.txt"
+        return True, ""
+    # write under the cross-process log lock with a fresh re-read inside
+    # the lock, so a concurrent append can never be clobbered (L9), and
+    # validate the target against that FRESH text, not the stale param.
+    rc = _locked_append(log_path, block, validate=_check)
+    if rc:
+        return rc
     print("Logged (LOCKED, resolves " + target_ts + "):")
     print(block.rstrip("\n"))
     return 0

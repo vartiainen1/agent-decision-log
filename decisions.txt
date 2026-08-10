@@ -217,6 +217,14 @@ Cross-link them in your setup notes.
   FILES: rules.txt
   STATUS: LOCKED.
 
+[2026-08-10 17:50] DECISION: serialize log appends with a cross-process lock
+  REASON: concurrent --decide/--revise/--resolve runs lost entries; the
+    read-modify-write was unlocked and the last writer won. A sibling
+    lock file (O_CREAT|O_EXCL, 5s wait, stale recovery) with a re-read
+    inside the lock closes the race with stdlib only.
+  FILES: check_decisions.py, _test_decisions.py
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
