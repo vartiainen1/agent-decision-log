@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-decision-log"
+dynamic = ["version"]
+description = "Your agent's decisions survive the session - append-only decisions with SUPERSEDES chains"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+keywords = ["ai", "agents", "claude", "llm", "decision-log", "memory", "cli"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development",
+  "Topic :: Utilities",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/vartiainen1/agent-decision-log"
+Repository = "https://github.com/vartiainen1/agent-decision-log"
+Changelog = "https://github.com/vartiainen1/agent-decision-log/blob/master/CHANGELOG.md"
+Releases = "https://github.com/vartiainen1/agent-decision-log/releases"
+
+[project.scripts]
+decision-log = "check_decisions:main"
+
+[tool.setuptools]
+py-modules = ["check_decisions"]
+
+[tool.setuptools_scm]
+fallback_version = "0.0.0"

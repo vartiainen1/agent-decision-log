@@ -649,4 +649,12 @@ t("exception vocabulary is a real hierarchy",
   issubclass(cd.ValidationError, cd.AgentLogError)
   and issubclass(cd.LockTimeoutError, cd.AgentLogError))
 
+# --- professional packaging: installed-mode defaults guard ---------------
+t("default base: in-place file resolves to its own folder",
+  cd._default_base(Path("/home/user/project/check_decisions.py"))
+  == Path("/home/user/project/check_decisions.py"))
+t("default base: pip-installed module resolves to the cwd",
+  cd._default_base(Path("/usr/local/lib/python3.12/site-packages/check_decisions.py"))
+  == Path.cwd())
+
 print(f"\nAll {PASS} tests passed.")

@@ -162,7 +162,7 @@ stored as-is, never double-encoded.
 ## Development
 
 ```bash
-python _test_decisions.py          # run the unit tests (136, 100% pass expected)
+python _test_decisions.py          # run the unit tests (138, 100% pass expected)
 python check_decisions.py          # validate the log
 python -m py_compile check_decisions.py start.py
 ```
@@ -206,3 +206,21 @@ failures, this one prevents repeating exploration.
 ## License
 
 MIT - see [LICENSE](LICENSE).
+
+## Installing with pip (optional)
+
+The single-file adoption story is unchanged - copy `check_decisions.py` into
+your project and you are done. The tool is *also* pip-installable with zero
+runtime dependencies:
+
+```sh
+pip install agent-decision-log
+decision-log --help
+```
+
+- The package version is derived from the git tag (setuptools-scm), which the
+  release workflow creates from CHANGELOG.md - there is no version to drift.
+- Run from the installed package, default paths (`decisions.txt`, `rules.txt`)
+  resolve against your current directory; an in-place copy keeps resolving
+  against the file's folder.
+- `--init` works identically from an installed copy (built-in templates).

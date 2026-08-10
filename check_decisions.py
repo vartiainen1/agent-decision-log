@@ -52,8 +52,22 @@ if sys.stdin and hasattr(sys.stdin, "reconfigure"):
     sys.stdin.reconfigure(encoding="utf-8", errors="replace")
 
 HERE = Path(__file__).resolve().parent
+
+
+def _default_base(module_dir: Path) -> Path:
+    """Directory the file defaults resolve to.
+
+    In-place single-file adoption (the normal case) resolves against this
+    file's folder. When pip-installed the module lives in site-packages, so
+    defaults resolve against the current directory instead - an installed
+    ``decision-log`` command must never write into site-packages.
+    """
+    return Path.cwd() if "site-packages" in module_dir.parts else module_dir
+
+
+BASE = _default_base(HERE)
 # Default decision log filename. Rename to match your project, or pass --log PATH.
-LOG = HERE / "decisions.txt"
+LOG = BASE / "decisions.txt"
 
 STATUSES: tuple[str, ...] = ("LOCKED", "OPEN", "REVISED")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
@@ -61,7 +75,7 @@ ENTRY_RE = re.compile(r"^\[(?P<tag>[^\]]+)\] DECISION: (?P<title>.+)$")
 FIELD_RE = re.compile(r"^  (?P<field>REASON|FILES|SUPERSEDES|STATUS):\s*(?P<value>.*)$")
 SEP_RE = re.compile(r"^={10,}$")
 SECTION5 = "5) TO ADD A NEW ENTRY"
-RULES = HERE / "rules.txt"            # rules file holding the LESSONS section
+RULES = BASE / "rules.txt"            # rules file holding the LESSONS section
 LESSONS_HEADER = "LESSONS LEARNED"
 
 
