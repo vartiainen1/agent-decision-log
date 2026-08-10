@@ -33,14 +33,18 @@ CHOSEN and WHY (proactive memory). Run from the folder holding this script
 Exit codes: 0 = ok / gate passed, 1 = validation errors or gate failed.
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import re
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Callable, Optional
 
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -51,7 +55,7 @@ HERE = Path(__file__).resolve().parent
 # Default decision log filename. Rename to match your project, or pass --log PATH.
 LOG = HERE / "decisions.txt"
 
-STATUSES = ("LOCKED", "OPEN", "REVISED")
+STATUSES: tuple[str, ...] = ("LOCKED", "OPEN", "REVISED")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
 ENTRY_RE = re.compile(r"^\[(?P<tag>[^\]]+)\] DECISION: (?P<title>.+)$")
 FIELD_RE = re.compile(r"^  (?P<field>REASON|FILES|SUPERSEDES|STATUS):\s*(?P<value>.*)$")
@@ -61,7 +65,45 @@ RULES = HERE / "rules.txt"            # rules file holding the LESSONS section
 LESSONS_HEADER = "LESSONS LEARNED"
 
 
-def load(path):
+# --- Error vocabulary -------------------------------------------------------
+class AgentLogError(Exception):
+    """Base class for tooling errors (validation / locking / usage)."""
+
+
+class ValidationError(AgentLogError):
+    """The log (or an argument) failed validation."""
+
+
+class LockTimeoutError(AgentLogError):
+    """Could not acquire the cross-process log lock within the deadline."""
+
+
+# --- Data model ---------------------------------------------------------------
+@dataclass
+class DecisionEntry:
+    """One parsed decision-log entry.
+
+    Dict-compatible on purpose: ``entry["tag"]`` still works (see
+    __getitem__), so tests, start.py and any external caller that indexed
+    parse_entries() results keep working unchanged. New code should use
+    attribute access (entry.tag, entry.title, entry.fields).
+    """
+
+    tag: str
+    title: str
+    line: int
+    body: list[str]
+    fields: dict[str, str]
+    block: str
+
+    def __getitem__(self, key: str) -> object:
+        return getattr(self, key)
+
+    def get(self, key: str, default: object = None) -> object:
+        return getattr(self, key, default)
+
+
+def load(path: Path) -> str:
     """Read a text file with UTF-8 fallback (BOM-safe).
 
     Returns "" if the file cannot be read (e.g. locked by another
@@ -74,8 +116,8 @@ def load(path):
         return ""
 
 
-def parse_entries(text):
-    """Return a list of entry dicts, in file order.
+def parse_entries(text: str) -> list[DecisionEntry]:
+    """Return a list of DecisionEntry objects, in file order.
 
     An entry starts at a column-0 "[ts] DECISION: ..." line (the template in
     section 5 is indented, so it never matches) and runs until the next entry
@@ -99,25 +141,25 @@ def parse_entries(text):
             fm = FIELD_RE.match(bl)
             if fm:
                 fields.setdefault(fm.group("field"), fm.group("value").strip())
-        entries.append({
-            "tag": m.group("tag"),
-            "title": m.group("title"),
-            "line": i,
-            "body": body,
-            "fields": fields,
-            "block": "\n".join([line] + body),
-        })
+        entries.append(DecisionEntry(
+            tag=m.group("tag"),
+            title=m.group("title"),
+            line=i,
+            body=body,
+            fields=fields,
+            block="\n".join([line] + body),
+        ))
     return entries
 
 
-def status_token(status):
+def status_token(status: str) -> str:
     """First word of a STATUS value, punctuation stripped ('LOCKED.' -> 'LOCKED')."""
     if not status:
         return ""
     return re.split(r"\s", status.strip())[0].rstrip(".,;—–-")
 
 
-def by_tag(entries):
+def by_tag(entries: list[DecisionEntry]) -> dict[str, DecisionEntry]:
     """Map tag -> entry (timestamps are unique; first wins)."""
     out = {}
     for e in entries:
@@ -125,7 +167,7 @@ def by_tag(entries):
     return out
 
 
-def superseded_by(entries, tag):
+def superseded_by(entries: list[DecisionEntry], tag: str) -> Optional[DecisionEntry]:
     """The entry that supersedes `tag`, or None.
 
     Append-only means "later" == later in the list: parse_entries preserves
@@ -141,7 +183,7 @@ def superseded_by(entries, tag):
     return None
 
 
-def current_open(entries):
+def current_open(entries: list[DecisionEntry]) -> list[DecisionEntry]:
     """OPEN decisions that no later entry supersedes (i.e. still need a call)."""
     out = []
     for e in entries:
@@ -153,7 +195,7 @@ def current_open(entries):
     return out
 
 
-def find_section5(text):
+def find_section5(text: str) -> Optional[int]:
     """Line index of the section-5 header, or None."""
     for i, l in enumerate(text.splitlines()):
         if l.strip() == SECTION5:
@@ -161,13 +203,14 @@ def find_section5(text):
     return None
 
 
-def _with_log_lock(log_path, fn):
+def _with_log_lock(log_path: Path, fn: Callable[[], int]) -> int:
     """Serialize a read-modify-write on log_path across processes.
 
     Creates a sibling '<name>.lock' file atomically (O_CREAT|O_EXCL, which
     fails if the lock already exists) and retries for up to 5s; the lock is
     removed in a finally block. A stale lock older than 30s (crashed writer)
-    is broken and reclaimed. Returns fn()'s result, or 1 on timeout.
+    is broken and reclaimed. Returns fn()'s result; raises LockTimeoutError
+    on timeout.
     """
     lock_path = log_path.with_name(log_path.name + ".lock")
     deadline = time.time() + 5.0
@@ -198,8 +241,7 @@ def _with_log_lock(log_path, fn):
             except OSError:
                 pass
             if time.time() > deadline:
-                print(f"timed out waiting for log lock: {lock_path}")
-                return 1
+                raise LockTimeoutError(f"timed out waiting for log lock: {lock_path}")
             time.sleep(0.05)
     try:
         return fn()
@@ -210,7 +252,8 @@ def _with_log_lock(log_path, fn):
             pass
 
 
-def _locked_append(log_path, block, validate=None):
+def _locked_append(log_path: Path, block: str,
+                    validate: Optional[Callable[[str], tuple[bool, str]]] = None) -> int:
     """Append a block under the log lock, re-reading inside the lock.
 
     The read-modify-write (load -> insert_before_section5 -> write) is not
@@ -222,7 +265,7 @@ def _locked_append(log_path, block, validate=None):
     text inside the lock, so validation and the write can never disagree
     under concurrency (caller-passed text may be stale by write time).
     """
-    def do_write():
+    def do_write() -> int:
         text = load(log_path)
         if validate is not None:
             ok, msg = validate(text)
@@ -230,10 +273,15 @@ def _locked_append(log_path, block, validate=None):
                 print(msg)
                 return 1
         log_path.write_text(insert_before_section5(text, block), encoding="utf-8")
-    return _with_log_lock(log_path, do_write)
+        return 0
+    try:
+        return _with_log_lock(log_path, do_write)
+    except LockTimeoutError as e:
+        print(e)
+        return 1
 
 
-def insert_before_section5(text, block):
+def insert_before_section5(text: str, block: str) -> str:
     """Insert a block (already formatted) directly above section 5's bar.
 
     The block goes between the last live content and the separator bar that
@@ -257,7 +305,7 @@ def insert_before_section5(text, block):
     return "\n".join(before) + "\n\n" + block.rstrip("\n") + "\n\n" + "\n".join(after) + "\n"
 
 
-def cmd_check(text):
+def cmd_check(text: str) -> int:
     """Validate every entry: fields present, status vocabulary, chain integrity."""
     errors, warnings = [], []
     seen = set()
@@ -313,7 +361,7 @@ def cmd_check(text):
     return 1 if errors else 0
 
 
-def cmd_has_open(text):
+def cmd_has_open(text: str) -> int:
     """Mechanical gate: exit 1 if any OPEN decision is still current."""
     open_ = current_open(parse_entries(text))
     if not open_:
@@ -326,7 +374,7 @@ def cmd_has_open(text):
     return 1
 
 
-def ask(prompt, required=False, default=None):
+def ask(prompt: str, required: bool = False, default: Optional[str] = None) -> str:
     """Single-line interactive prompt (Ctrl-C/EOF aborts cleanly)."""
     if default:
         prompt += f" [{default}]"
@@ -343,12 +391,12 @@ def ask(prompt, required=False, default=None):
     return val
 
 
-def now_ts():
+def now_ts() -> str:
     """Current timestamp in the log's format."""
     return datetime.now().strftime("%Y-%m-%d %H:%M")
 
 
-def format_block(title, reason, files, supersedes, status):
+def format_block(title: str, reason: str, files: str, supersedes: str, status: str) -> str:
     """Render one entry block in the template format."""
     lines = [f"[{now_ts()}] DECISION: {title}",
              f"  REASON: {reason}"]
@@ -360,7 +408,7 @@ def format_block(title, reason, files, supersedes, status):
     return "\n".join(lines) + "\n"
 
 
-def _validate_ss(text, ss):
+def _validate_ss(text: str, ss: str) -> tuple[bool, str]:
     """Return (ok, msg) for a SUPERSEDES value against the current log."""
     if not ss:
         return True, ""
@@ -370,7 +418,7 @@ def _validate_ss(text, ss):
     return False, f"no entry with timestamp '{ss}' - check decisions.txt"
 
 
-def cmd_decide(text, log_path):
+def cmd_decide(text: str, log_path: Path) -> int:
     """Scaffold a decision entry in the template format, then append it."""
     title = ask("DECISION (what you chose)", required=True)
     reason = ask("REASON (why - the alternative you considered)", required=True)
@@ -401,7 +449,7 @@ def cmd_decide(text, log_path):
     return 0
 
 
-def cmd_revise(text, log_path, target_ts):
+def cmd_revise(text: str, log_path: Path, target_ts: str) -> int:
     """Change a decision: append a REVISED entry superseding target_ts."""
     if target_ts not in by_tag(parse_entries(text)):
         print(f"no entry with timestamp '{target_ts}' - check decisions.txt")
@@ -410,7 +458,7 @@ def cmd_revise(text, log_path, target_ts):
     reason = ask("REASON (why the change)", required=True)
     files = ask("FILES (files affected, optional)", default="")
     block = format_block(title, reason, files, target_ts, "REVISED")
-    def _check(t):
+    def _check(t: str) -> tuple[bool, str]:
         if target_ts not in by_tag(parse_entries(t)):
             return False, f"no entry with timestamp '{target_ts}' - check decisions.txt"
         return True, ""
@@ -425,7 +473,7 @@ def cmd_revise(text, log_path, target_ts):
     return 0
 
 
-def cmd_resolve(text, log_path, target_ts):
+def cmd_resolve(text: str, log_path: Path, target_ts: str) -> int:
     """Settle an OPEN decision: append a LOCKED entry superseding it."""
     entries = by_tag(parse_entries(text))
     target = entries.get(target_ts)
@@ -438,7 +486,7 @@ def cmd_resolve(text, log_path, target_ts):
     reason = ask("REASON (why now / why this)", required=True)
     files = ask("FILES (files affected, optional)", default="")
     block = format_block(title, reason, files, target_ts, "LOCKED")
-    def _check(t):
+    def _check(t: str) -> tuple[bool, str]:
         if target_ts not in by_tag(parse_entries(t)):
             return False, f"no entry with timestamp '{target_ts}' - check decisions.txt"
         return True, ""
@@ -453,7 +501,7 @@ def cmd_resolve(text, log_path, target_ts):
     return 0
 
 
-def cmd_recent(text, n):
+def cmd_recent(text: str, n: int) -> int:
     """Show the last N decisions with currency (CURRENT vs SUPERSEDED)."""
     entries = parse_entries(text)
     if not entries:
@@ -474,7 +522,7 @@ def cmd_recent(text, n):
     return 0
 
 
-def cmd_stats(text):
+def cmd_stats(text: str) -> int:
     """Analytics over the decision log: status mix, reversals, volatility."""
     entries = parse_entries(text)
     if not entries:
@@ -535,7 +583,7 @@ def cmd_stats(text):
 
 # --- Review distillation (--review) ----------------------------------------
 
-def _topic_of(e):
+def _topic_of(e: DecisionEntry) -> str:
     """Grouping key for --review/--stats: first FILES basename when present,
     else the first 3 title words.
 
@@ -548,7 +596,7 @@ def _topic_of(e):
     return "title:" + " ".join(e["title"].lower().split()[:3])
 
 
-def cmd_review(text, rules_path, apply):
+def cmd_review(text: str, rules_path: Path, apply: bool) -> int:
     """Distill repeated reversals into proposed rules; --apply writes §7."""
     entries = parse_entries(text)
     if not entries:
@@ -607,7 +655,7 @@ def cmd_review(text, rules_path, apply):
     return 0
 
 
-def _patch_rules_lessons(rules_path, body):
+def _patch_rules_lessons(rules_path: Path, body: str) -> str:
     """Replace the LESSONS section in rules.txt with body; append if absent.
 
     The header is anchored to a real section title (a numbered section line
@@ -717,7 +765,7 @@ MINIMAL_NOTES = (
 )
 
 
-def _template_text(name, fallback):
+def _template_text(name: str, fallback: str) -> str:
     """Content for a template file: the real template next to this script, or a
     minimal built-in scaffold when it is missing (e.g. only check_decisions.py
     was copied into the target project).
@@ -732,7 +780,7 @@ def _template_text(name, fallback):
     return fallback
 
 
-def cmd_init(target, run_tests=True):
+def cmd_init(target: str, run_tests: bool = True) -> int:
     """One-command adoption: scaffold the templates, health-check the log,
     and (optionally) run the unit tests. Existing files are never overwritten."""
     target = Path(target)
@@ -773,7 +821,7 @@ def cmd_init(target, run_tests=True):
     print("        bootstrap. Behavior rules live in rules.txt.")
     return 0
 
-def _extract_area(msg):
+def _extract_area(msg: str) -> Optional[str]:
     """Marker value from a commit message, or None.
 
     Matches the shell hooks exactly: the first line that carries an
@@ -791,7 +839,7 @@ def _extract_area(msg):
     return None
 
 
-def cmd_check_commit(text, msg_path):
+def cmd_check_commit(text: str, msg_path: Path) -> int:
     """Gate on a commit message file: exit 0 only if it names a logged decision.
 
     Server-side twin of the log-before-change rule so the AREA-marker
@@ -821,7 +869,7 @@ def cmd_check_commit(text, msg_path):
     return 1
 
 
-def main():
+def main() -> int:
     ap = argparse.ArgumentParser(
         description="Validate and maintain the decision log (stdlib only). "
                     "Exit 0 = ok / gate passed, 1 = validation errors / gate failed.")
@@ -863,30 +911,33 @@ def main():
         return cmd_init(args.target or ".", run_tests=not args.no_tests)
 
     log_path = Path(args.log) if args.log else LOG
-    if not log_path.exists():
-        print(f"missing decision log: {log_path}")
+    try:
+        if not log_path.exists():
+            raise ValidationError(f"missing decision log: {log_path}")
+        text = load(log_path)
+
+        if args.check_commit:
+            return cmd_check_commit(text, Path(args.check_commit))
+
+        if args.decide:
+            return cmd_decide(text, log_path)
+        if args.revise:
+            return cmd_revise(text, log_path, args.revise)
+        if args.resolve:
+            return cmd_resolve(text, log_path, args.resolve)
+        if args.has_open:
+            return cmd_has_open(text)
+        if args.recent is not None:
+            return cmd_recent(text, args.recent)
+        if args.stats:
+            return cmd_stats(text)
+        if args.review:
+            rules_path = Path(args.rules) if args.rules else RULES
+            return cmd_review(text, rules_path, args.apply)
+        return cmd_check(text)
+    except AgentLogError as e:
+        print(e)
         return 1
-    text = load(log_path)
-
-    if args.check_commit:
-        return cmd_check_commit(text, Path(args.check_commit))
-
-    if args.decide:
-        return cmd_decide(text, log_path)
-    if args.revise:
-        return cmd_revise(text, log_path, args.revise)
-    if args.resolve:
-        return cmd_resolve(text, log_path, args.resolve)
-    if args.has_open:
-        return cmd_has_open(text)
-    if args.recent is not None:
-        return cmd_recent(text, args.recent)
-    if args.stats:
-        return cmd_stats(text)
-    if args.review:
-        rules_path = Path(args.rules) if args.rules else RULES
-        return cmd_review(text, rules_path, args.apply)
-    return cmd_check(text)
 
 
 if __name__ == "__main__":
