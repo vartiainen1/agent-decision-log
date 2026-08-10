@@ -31,6 +31,9 @@ AST, OAuth vs JWT, library vs hand-rolled). Log it:
   stay deferred.
 - **Run `python start.py` at session start** - it surfaces the last decisions
   and anything still OPEN. Start from that state.
+- **Read the log before retrying.** If a fix fails once, stop and grep
+  `decisions.txt` (and the sibling error log) for that class before trying
+  again - the answer is usually already logged. Do not retry blind.
 
 ## 4) Status lifecycle (exactly three states)
 

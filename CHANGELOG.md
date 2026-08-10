@@ -6,6 +6,10 @@ top of this file is the single source of truth - releases are cut from it by
 
 ## [Unreleased]
 
+### Fixed
+- L10: `load()` no longer crashes on a locked/unreadable log file (graceful `OSError` fallback; regression tests added).
+
+
 ### Docs
 
 
