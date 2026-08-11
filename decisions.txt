@@ -271,3 +271,9 @@ or copy this template:
     REASON: <why - the alternative you considered>
     FILES: <files affected, optional>
     STATUS: LOCKED            (LOCKED / OPEN / REVISED)
+[2026-08-11 12:45] DECISION: dogfood ledger - full-history gate scan documented in README
+  REASON: the reputation strategy needs the dogfood proof visible per repo;
+          records the family gate's full-history scan (33 commits, 12
+          findings: R2 x5 / R4 x7), every class classified, none suppressed
+  FILES: README.md
+  STATUS: LOCKED

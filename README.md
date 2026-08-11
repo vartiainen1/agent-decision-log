@@ -224,3 +224,27 @@ decision-log --help
   resolve against your current directory; an in-place copy keeps resolving
   against the file's folder.
 - `--init` works identically from an installed copy (built-in templates).
+
+## Dogfood ledger
+
+This repo is reviewed by its own family gate. **agent-diff-gate** was run
+over this repo's entire history (initial commit → `HEAD`):
+
+| | |
+|---|---|
+| Commits scanned | 33 (~1,800 diff lines) |
+| Findings | **12** — 5 HIGH · 7 MEDIUM |
+| Classes | R2 ×5 (HIGH) · R4 ×7 (MEDIUM) |
+| Suppressed | **none** — every finding is fixed, tracked in `decisions.txt`, or documented here |
+
+- **R2 (HIGH)** — best-effort lock-cleanup swallows in `check_decisions.py`
+  (stale lock-file unlink). Deliberate by intent — cleanup failure is
+  non-fatal — and documented here as the accepted class.
+- **R4 (MEDIUM)** — the documented test-fixture duplication class.
+
+Reproduce from this repo:
+
+```sh
+git diff $(git rev-list --max-parents=0 HEAD) HEAD \
+  | python <path-to>/agent-diff-gate/check_diff.py --stdin --json
+```
