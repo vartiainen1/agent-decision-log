@@ -232,7 +232,7 @@ over this repo's entire history (initial commit → `HEAD`):
 
 | | |
 |---|---|
-| Commits scanned | 33 (~1,800 diff lines) |
+| Commits scanned | 35 (~1,900 diff lines) |
 | Findings | **12** — 5 HIGH · 7 MEDIUM |
 | Classes | R2 ×5 (HIGH) · R4 ×7 (MEDIUM) |
 | Suppressed | **none** — every finding is fixed, tracked in `decisions.txt`, or documented here |

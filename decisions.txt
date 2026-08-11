@@ -284,3 +284,8 @@ or copy this template:
           to strip a trailing "(#NN)" group before punctuation.
   FILES: check_decisions.py, _test_decisions.py
   STATUS: LOCKED
+[2026-08-11 13:05] DECISION: refresh Dogfood ledger after squash-merge (#NN) fix round
+  REASON: the ledger row went stale after the fix PRs (scan window grew);
+          findings unchanged (12: R2 x5 / R4 x7). Refresh 33 -> 35 commits.
+  FILES: README.md
+  STATUS: LOCKED
