@@ -19,7 +19,7 @@ mistakes and its choices.
 [![Visitors](https://visitor-badge.laobi.icu/badge?page_id=vartiainen1.agent-decision-log&left_text=Visitors&right_color=2F80ED)](https://github.com/vartiainen1/agent-decision-log)
 [![companion](https://img.shields.io/badge/companion-agent--error--log-2ea44f)](https://github.com/vartiainen1/agent-error-log)
 
-## Why
+## Why this exists
 
 An agent repeats bad decisions far more often than it repeats crashes. A bug
 has a stack trace - it forces itself to be noticed. A bad decision is
@@ -195,17 +195,30 @@ squash title. The gate job skips PR events on purpose: PRs are gated when
 the merge lands, so the squash title is exactly what gets re-checked on
 `master`.
 
-## Companion tool
+## Security
 
-- [**agent-error-log**](https://github.com/vartiainen1/agent-error-log) -
-  logs what broke, mechanically enforced by a git hook. Reactive memory.
+- The decision log may contain sensitive context (architecture details,
+  tradeoff analysis). **Never log credentials or secrets** — keep the repo
+  private if in doubt.
+- Stdlib only; default paths resolve next to the script, so a scratch copy
+  never touches your real log.
+- To report a vulnerability, use the private advisory path in
+  [`SECURITY.md`](SECURITY.md) — never a public issue.
 
-Two tools, same shape, same lifecycle verbs: one prevents repeating
-failures, this one prevents repeating exploration.
+## Companion tools
 
-## License
+The agent-memory family — same shape, same lifecycle verbs, four layers:
 
-MIT - see [LICENSE](LICENSE).
+| Repo | What it remembers | How it works |
+|---|---|---|
+| [agent-error-log](https://github.com/vartiainen1/agent-error-log) | what BROKE | text log + linter + git gate |
+| **agent-decision-log (this)** | what was CHOSEN and why | append-only decisions + currency chain |
+| [agent-log-ai](https://github.com/vartiainen1/agent-log-ai) | *why* it kept happening | heuristics select → LLM reasons |
+| [agent-diff-gate](https://github.com/vartiainen1/agent-diff-gate) | what must never be COMMITTED | pre-commit diff scan + gate |
+
+Two tools, same shape, same lifecycle verbs: agent-error-log prevents
+repeating failures, this one prevents repeating exploration. The family's
+enforcement layer (agent-diff-gate) catches both before they land.
 
 ## Installing with pip (optional)
 
@@ -225,6 +238,10 @@ decision-log --help
   against the file's folder.
 - `--init` works identically from an installed copy (built-in templates).
 
+## License
+
+MIT - see [LICENSE](LICENSE).
+
 ## Dogfood ledger
 
 This repo is reviewed by its own family gate. **agent-diff-gate** was run
@@ -232,7 +249,7 @@ over this repo's entire history (initial commit → `HEAD`):
 
 | | |
 |---|---|
-| Commits scanned | 35 (~1,900 diff lines) |
+| Commits scanned | 37 (~1,900 diff lines) |
 | Findings | **12** — 5 HIGH · 7 MEDIUM |
 | Classes | R2 ×5 (HIGH) · R4 ×7 (MEDIUM) |
 | Suppressed | **none** — every finding is fixed, tracked in `decisions.txt`, or documented here |

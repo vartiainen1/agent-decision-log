@@ -261,6 +261,11 @@ Cross-link them in your setup notes.
   FILES: pyproject.toml, check_decisions.py, ci.yml, publish.yml, README.md, CHANGELOG.md
   STATUS: LOCKED
 
+[2026-08-11 12:21] DECISION: restructure README to canonical family order and correct stale details
+  REASON: the four family READMEs drifted out of order (pip after License, singular Companion headings, no Security section here) and carried stale details; standardize on one template
+  FILES: README.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
