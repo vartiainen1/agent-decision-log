@@ -266,6 +266,11 @@ Cross-link them in your setup notes.
   FILES: README.md
   STATUS: LOCKED.
 
+[2026-08-11 22:17] DECISION: README ending structure - License not last, Dogfood ledger lacks lead-in
+  REASON: License was not the final README section (it sat before the Dogfood ledger) and the ledger's R2/R4 rows appeared with no lead-in; moved License last and added a lead-in defining the gate and the classes
+  FILES: README.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
