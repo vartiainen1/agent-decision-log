@@ -304,3 +304,12 @@ or copy this template:
           findings unchanged (12: R2 x5 / R4 x7). Refresh 33 -> 35 commits.
   FILES: README.md
   STATUS: LOCKED
+
+[2026-08-11 23:05] DECISION: README family style drift guard - canonical section order + companion badges
+  REASON: the audit fixes were enforced by hand; the family
+          contract needs a mechanical backstop so the section
+          order, badge completeness, and License-last rule can
+          never silently regress. A self-deriving guard is the
+          same philosophy as the test-count drift guard.
+  FILES: _check_readme_style.py, .github/workflows/ci.yml, README.md
+  STATUS: LOCKED

@@ -258,7 +258,7 @@ prints the full list). The classes that appear in this repo's history:
 
 | | |
 |---|---|
-| Commits scanned | 39 (~1,900 diff lines) |
+| Commits scanned | 40 (~2,100 diff lines) |
 | Findings | **12** — 5 HIGH · 7 MEDIUM |
 | Classes | R2 ×5 (HIGH) · R4 ×7 (MEDIUM) |
 | Suppressed | **none** — every finding is fixed, tracked in `decisions.txt`, or documented here |
