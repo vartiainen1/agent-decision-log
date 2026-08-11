@@ -271,6 +271,11 @@ Cross-link them in your setup notes.
   FILES: README.md
   STATUS: LOCKED.
 
+[2026-08-11 22:37] DECISION: README consistency audit fixes - section order, companion badges, title casing
+  REASON: README audit found the Companion-tools prose still said 'Two tools' in a four-layer family, and companion badges only linked error-log; updated prose to four-layer framing and badges now link error-log + log-ai + diff-gate
+  FILES: README.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
