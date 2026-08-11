@@ -428,6 +428,9 @@ t("gate: LOG: marker accepted", quiet(cd.cmd_check_commit, S, p) == 0)
 td.cleanup()
 p, td = _msg("feat: something (AREA: AUTH FLOW - JWT OVER OAUTH)\n")
 t("gate: case-insensitive match", quiet(cd.cmd_check_commit, S, p) == 0)
+p, td = _msg("feat: something (AREA: auth flow) (#27)\n")
+t("gate: GitHub squash-merge (#NN) suffix stripped", quiet(cd.cmd_check_commit, S, p) == 0)
+td.cleanup()
 td.cleanup()
 
 
