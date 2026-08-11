@@ -5,7 +5,6 @@ Your agent's decisions survive the session.
 A tiny, dependency-free system for anyone who works with AI coding assistants
 or builds their own agent loops. `decisions.txt` records what your agent
 CHOSE and WHY - so the next session starts from *"we already decided X"*
-instead of re-exploring it. The companion to
 [agent-error-log](https://github.com/vartiainen1/agent-error-log) (which
 records what broke); together they give an agent a memory for both its
 mistakes and its choices.
@@ -17,7 +16,9 @@ mistakes and its choices.
 [![python](https://img.shields.io/badge/python-3.9%20%7C%203.11%20%7C%203.12-3776AB)](https://github.com/vartiainen1/agent-decision-log/actions)
 [![dependencies-0](https://img.shields.io/badge/dependencies-0-brightgreen)](https://github.com/vartiainen1/agent-decision-log)
 [![Visitors](https://visitor-badge.laobi.icu/badge?page_id=vartiainen1.agent-decision-log&left_text=Visitors&right_color=2F80ED)](https://github.com/vartiainen1/agent-decision-log)
-[![companion](https://img.shields.io/badge/companion-agent--error--log-2ea44f)](https://github.com/vartiainen1/agent-error-log)
+[![companion-error](https://img.shields.io/badge/companion-agent--error--log-2ea44f)](https://github.com/vartiainen1/agent-error-log)
+[![companion-log-ai](https://img.shields.io/badge/companion-agent--log--ai-2ea44f)](https://github.com/vartiainen1/agent-log-ai)
+[![companion-diff-gate](https://img.shields.io/badge/companion-agent--diff--gate-2ea44f)](https://github.com/vartiainen1/agent-diff-gate)
 
 ## Why this exists
 
@@ -216,9 +217,10 @@ The agent-memory family — same shape, same lifecycle verbs, four layers:
 | [agent-log-ai](https://github.com/vartiainen1/agent-log-ai) | *why* it kept happening | heuristics select → LLM reasons |
 | [agent-diff-gate](https://github.com/vartiainen1/agent-diff-gate) | what must never be COMMITTED | pre-commit diff scan + gate |
 
-Two tools, same shape, same lifecycle verbs: agent-error-log prevents
-repeating failures, this one prevents repeating exploration. The family's
-enforcement layer (agent-diff-gate) catches both before they land.
+Same shape, same lifecycle verbs across all four layers: agent-error-log
+prevents repeating failures, this one prevents repeating exploration,
+agent-log-ai explains why both keep happening, and agent-diff-gate catches
+the results before they land.
 
 ## Installing with pip (optional)
 
@@ -256,7 +258,7 @@ prints the full list). The classes that appear in this repo's history:
 
 | | |
 |---|---|
-| Commits scanned | 38 (~1,900 diff lines) |
+| Commits scanned | 39 (~1,900 diff lines) |
 | Findings | **12** — 5 HIGH · 7 MEDIUM |
 | Classes | R2 ×5 (HIGH) · R4 ×7 (MEDIUM) |
 | Suppressed | **none** — every finding is fixed, tracked in `decisions.txt`, or documented here |
