@@ -7,6 +7,9 @@ top of this file is the single source of truth - releases are cut from it by
 ## [Unreleased]
 
 ### Added
+- README Verification section documents the real battery record
+  (18,120 installed-binary executions across four rounds, 0 failed).
+
 - `--stdin` non-interactive mode for `--decide`/`--revise`/`--resolve`: the
   answers (DECISION/REASON/FILES/STATUS[,SUPERSEDES]) are read from piped
   stdin, one per line, with no prompts; required fields and invalid input
