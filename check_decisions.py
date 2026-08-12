@@ -389,8 +389,49 @@ def cmd_has_open(text: str) -> int:
     return 1
 
 
+_STDIN_QUEUE: Optional[list[str]] = None
+"""Non-interactive (--stdin) answer queue, in prompt order.
+
+Set by main() when --decide/--revise/--resolve --stdin is used: answers
+come from piped stdin (one per line, no prompts). When the queue is
+exhausted or a required / invalid answer arrives, ask() fails loudly and
+no partial entry is written.
+"""
+
+
+def _ask_stdin(prompt: str, required: bool, default: Optional[str]) -> str:
+    """Non-interactive ask(): consume the next piped answer, never prompt.
+
+    When the piped answers run out, remaining prompts fall back to their
+    default exactly as pressing Enter would interactively (default-bearing
+    fields only). A required field with no default fails loudly and no
+    partial entry is written.
+    """
+    if not _STDIN_QUEUE:
+        if default is not None:
+            return default
+        print(f"stdin exhausted while answering '{prompt}' - this field is "
+              f"required and has no default (non-interactive --stdin mode; "
+              f"pipe answers one per line in prompt order)")
+        raise SystemExit(1)
+    val = _STDIN_QUEUE.pop(0).strip()
+    if not val and default:
+        val = default
+    if required and not val:
+        print(f"required answer missing for '{prompt}' "
+              f"(non-interactive --stdin mode)")
+        raise SystemExit(1)
+    return val
+
+
 def ask(prompt: str, required: bool = False, default: Optional[str] = None) -> str:
-    """Single-line interactive prompt (Ctrl-C/EOF aborts cleanly)."""
+    """Single-line interactive prompt (Ctrl-C/EOF aborts cleanly).
+
+    With --stdin the answer is consumed from the piped queue instead and
+    no prompt is printed.
+    """
+    if _STDIN_QUEUE is not None:
+        return _ask_stdin(prompt, required, default)
     if default:
         prompt += f" [{default}]"
     try:
@@ -443,12 +484,19 @@ def cmd_decide(text: str, log_path: Path) -> int:
         st = ask("STATUS", default="LOCKED").upper()
         if st in STATUSES:
             break
+        if _STDIN_QUEUE is not None:
+            print(f"invalid STATUS '{st}' - must be one of: {STATUSES} "
+                  f"(non-interactive --stdin mode)")
+            raise SystemExit(1)
         print(f"Status must be one of: {STATUSES}")
     if st == "REVISED" or st == "LOCKED":
         supersedes = ask("SUPERSEDES (ts this replaces/resolves, optional)", default="")
         if supersedes:
             ok, msg = _validate_ss(text, supersedes)
             if not ok:
+                if _STDIN_QUEUE is not None:
+                    print(f"{msg} (non-interactive --stdin mode)")
+                    raise SystemExit(1)
                 print(msg)
                 supersedes = ask("SUPERSEDES (re-enter a valid ts, or leave blank)", default="")
     if st == "REVISED" and not supersedes:
@@ -897,6 +945,11 @@ def main() -> int:
                     help="decision log to use (default: decisions.txt in this folder)")
     ap.add_argument("--decide", action="store_true",
                     help="scaffold a new decision entry (interactive)")
+    ap.add_argument("--stdin", action="store_true",
+                    help="non-interactive: read the --decide/--revise/--resolve "
+                         "answers from piped stdin, one per line (DECISION, "
+                         "REASON, FILES, STATUS[, SUPERSEDES]); fails loudly on "
+                         "exhausted or invalid input")
     ap.add_argument("--revise", metavar="TS",
                     help="change a decision: append a REVISED entry superseding TS")
     ap.add_argument("--resolve", metavar="TS",
@@ -927,6 +980,16 @@ def main() -> int:
                          "a logged decision (AREA:/LOG: marker)")
     ap.add_argument("--version", action="store_true", help="print version and exit")
     args = ap.parse_args()
+    if args.stdin:
+        if not (args.decide or args.revise or args.resolve):
+            print("WARN : --stdin only affects --decide/--revise/--resolve; ignoring it here.")
+        elif sys.stdin.isatty():
+            print("--stdin requires piped input "
+                  "(printf 'DECISION\\nREASON\\n...' | check_decisions.py --decide --stdin).")
+            return 1
+        else:
+            global _STDIN_QUEUE
+            _STDIN_QUEUE = [ln.strip() for ln in sys.stdin.read().splitlines()]
 
     if args.version:
         print(f"check_decisions.py {VERSION}")
@@ -945,11 +1008,17 @@ def main() -> int:
             return cmd_check_commit(text, Path(args.check_commit))
 
         if args.decide:
-            return cmd_decide(text, log_path)
+            rc = cmd_decide(text, log_path)
+            _STDIN_QUEUE = None
+            return rc
         if args.revise:
-            return cmd_revise(text, log_path, args.revise)
+            rc = cmd_revise(text, log_path, args.revise)
+            _STDIN_QUEUE = None
+            return rc
         if args.resolve:
-            return cmd_resolve(text, log_path, args.resolve)
+            rc = cmd_resolve(text, log_path, args.resolve)
+            _STDIN_QUEUE = None
+            return rc
         if args.has_open:
             return cmd_has_open(text)
         if args.recent is not None:

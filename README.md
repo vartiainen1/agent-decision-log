@@ -89,6 +89,7 @@ a REVISED entry is visibly inconsistent - not blocked, just accountable.
 |---|---|
 | `python check_decisions.py` | validate the log (exit 0 = healthy) |
 | `--decide` | scaffold a new decision (interactive; LOCKED + SUPERSEDES is the manual form of `--resolve`) |
+| `--decide --stdin` | non-interactive scaffolder — reads DECISION/REASON/FILES/STATUS([,SUPERSEDES]) from piped stdin, one per line, no prompts; required fields and invalid input fail loudly with no partial entry; optional fields default as if Enter were pressed |
 | `--revise <ts>` | change a decision: append REVISED superseding `ts` |
 | `--resolve <ts>` | settle an OPEN decision: append LOCKED superseding `ts` |
 | `--has-open` | gate: exit 1 if any OPEN decision is still current |
@@ -98,6 +99,12 @@ a REVISED entry is visibly inconsistent - not blocked, just accountable.
 | `--review --apply` | write the proposals into rules.txt §7 (LESSONS) |
 | `--init [--target DIR]` | one-command adoption + health check + self-test |
 | `--check-commit FILE` | gate: exit 0 only if the commit message in FILE names a logged decision |
+
+Headless / CI usage — pipe the answers, one per line:
+
+```
+printf 'auth via JWT\nstateless, no session store\n\nLOCKED\n' | python check_decisions.py --decide --stdin
+```
 
 ## How the currency rule works
 
@@ -163,7 +170,7 @@ stored as-is, never double-encoded.
 ## Development
 
 ```bash
-python _test_decisions.py          # run the unit tests (147, 100% pass expected)
+python _test_decisions.py          # run the unit tests (170, 100% pass expected)
 python check_decisions.py          # validate the log
 python -m py_compile check_decisions.py start.py
 ```

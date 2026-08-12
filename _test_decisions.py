@@ -250,6 +250,154 @@ with mock.patch("check_decisions.input", side_effect=["JWT it is", "single consu
 
 t("resolve unknown ts rejected", quiet(cd.cmd_resolve, S, Path("x"), "1999-01-01 00:00") == 1)
 
+# --- non-interactive --stdin mode (family finding: truncated piped stdin) ---
+def _set_dl_queue(q):
+    old = cd._STDIN_QUEUE
+    cd._STDIN_QUEUE = list(q)
+    return old
+
+
+def _dl_exit(fn, *a, **kw):
+    try:
+        fn(*a, **kw)
+        return None
+    except SystemExit as e:
+        return e.code
+
+
+def _stdin_decide(text, log, answers):
+    old = _set_dl_queue(answers)
+    try:
+        return cd.cmd_decide(text, log)
+    finally:
+        cd._STDIN_QUEUE = old
+
+
+def _stdin_revise(text, log, ts, answers):
+    old = _set_dl_queue(answers)
+    try:
+        return cd.cmd_revise(text, log, ts)
+    finally:
+        cd._STDIN_QUEUE = old
+
+
+def _stdin_resolve(text, log, ts, answers):
+    old = _set_dl_queue(answers)
+    try:
+        return cd.cmd_resolve(text, log, ts)
+    finally:
+        cd._STDIN_QUEUE = old
+
+
+d7, p7 = tmp_log(sample_log())
+try:
+    t("stdin decide LOCKED returns 0",
+      quiet(_stdin_decide, p7.read_text(encoding="utf-8"), p7,
+            ["s call", "the reason", "src/a.py", "LOCKED"]) == 0)
+    a7 = p7.read_text(encoding="utf-8")
+    t("stdin decide writes the entry",
+      "DECISION: s call" in a7 and "STATUS: LOCKED." in a7)
+    t("stdin decided entry validates", quiet(cd.cmd_check, a7) == 0)
+finally:
+    d7.cleanup()
+
+d8, p8 = tmp_log(sample_log())
+try:
+    t("stdin decide OPEN path returns 0",
+      quiet(_stdin_decide, p8.read_text(encoding="utf-8"), p8,
+            ["s8", "not now", "", "OPEN"]) == 0)
+    t("stdin decide OPEN has no SUPERSEDES leak",
+      "SUPERSEDES: " not in p8.read_text(encoding="utf-8").splitlines()[-2])
+finally:
+    d8.cleanup()
+
+# REVISED with a real supersedes target
+d9, p9 = tmp_log(sample_log())
+try:
+    t("stdin decide REVISED with supersedes returns 0",
+      quiet(_stdin_decide, p9.read_text(encoding="utf-8"), p9,
+            ["s9", "why", "", "REVISED", "2026-08-09 14:32"]) == 0)
+    a9 = p9.read_text(encoding="utf-8")
+    t("stdin decide REVISED writes SUPERSEDES", "SUPERSEDES: 2026-08-09 14:32" in a9)
+    t("stdin decided REVISED validates", quiet(cd.cmd_check, a9) == 0)
+finally:
+    d9.cleanup()
+
+# REVISED without supersedes aborts loudly, writes nothing
+d10, p10 = tmp_log(sample_log())
+try:
+    t("stdin decide REVISED without ss aborts",
+      _dl_exit(_stdin_decide, p10.read_text(encoding="utf-8"), p10,
+               ["s10", "why", "", "REVISED"]) == 1)
+    t("stdin decide REVISED no-ss writes nothing", "DECISION: s10" not in p10.read_text(encoding="utf-8"))
+finally:
+    d10.cleanup()
+
+# invalid STATUS fails loudly instead of the interactive retry loop
+d11, p11 = tmp_log(sample_log())
+try:
+    t("stdin decide invalid status aborts",
+      _dl_exit(_stdin_decide, p11.read_text(encoding="utf-8"), p11,
+               ["s11", "why", "", "NOPE"]) == 1)
+    t("stdin decide invalid status writes nothing", "DECISION: s11" not in p11.read_text(encoding="utf-8"))
+finally:
+    d11.cleanup()
+
+# truncated before a required (no-default) field fails loudly; fields with
+# defaults fall back exactly as pressing Enter would
+d12, p12 = tmp_log(sample_log())
+try:
+    t("stdin decide truncated at required field aborts",
+      _dl_exit(_stdin_decide, p12.read_text(encoding="utf-8"), p12,
+               ["s12"]) == 1)
+    t("stdin decide truncated writes nothing", "DECISION: s12" not in p12.read_text(encoding="utf-8"))
+finally:
+    d12.cleanup()
+
+d12b, p12b = tmp_log(sample_log())
+try:
+    t("stdin decide truncated optional fields default",
+      quiet(_stdin_decide, p12b.read_text(encoding="utf-8"), p12b,
+            ["s12b", "why"]) == 0)
+    a12b = p12b.read_text(encoding="utf-8")
+    t("stdin decide truncated optional defaults applied",
+      "DECISION: s12b" in a12b and "STATUS: LOCKED." in a12b)
+finally:
+    d12b.cleanup()
+
+d13, p13 = tmp_log(sample_log())
+try:
+    t("stdin revise returns 0",
+      quiet(_stdin_revise, p13.read_text(encoding="utf-8"), p13,
+            "2026-08-09 14:32", ["now AST", "file grew", "src/parser.py"]) == 0)
+    t("stdin revise appends REVISED", "DECISION: now AST" in p13.read_text(encoding="utf-8"))
+finally:
+    d13.cleanup()
+
+d14, p14 = tmp_log(sample_log())
+try:
+    t("stdin resolve returns 0",
+      quiet(_stdin_resolve, p14.read_text(encoding="utf-8"), p14,
+            "2026-08-09 15:00", ["JWT now", "single consumer", ""]) == 0)
+    a14 = p14.read_text(encoding="utf-8")
+    t("stdin resolve appends LOCKED + SUPERSEDES",
+      "DECISION: JWT now" in a14 and "SUPERSEDES: 2026-08-09 15:00" in a14)
+    t("stdin resolved OPEN no longer current", cd.current_open(cd.parse_entries(a14)) == [])
+finally:
+    d14.cleanup()
+
+# full CLI: --decide --stdin through main() with piped stdin
+d15, p15 = tmp_log(sample_log())
+try:
+    with mock.patch("check_decisions.sys.argv", ["check_decisions.py", "--decide", "--stdin", "--log", str(p15)]), \
+          mock.patch("check_decisions.sys.stdin", io.StringIO("m15\nr15\n\nLOCKED\n")):
+        t("stdin decide via main returns 0", quiet(cd.main) == 0)
+    t("stdin decide via main writes entry", "DECISION: m15" in p15.read_text(encoding="utf-8"))
+finally:
+    cd._STDIN_QUEUE = None
+    d15.cleanup()
+
+
 # EOF aborts cleanly
 with mock.patch("check_decisions.input", side_effect=EOFError):
     try:

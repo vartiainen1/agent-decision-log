@@ -286,6 +286,11 @@ Cross-link them in your setup notes.
   FILES: check_decisions.py
   STATUS: LOCKED.
 
+[2026-08-12 09:25] DECISION: --decide/--revise/--resolve gain a --stdin non-interactive mode (answers from piped stdin, defaults like pressing Enter)
+  REASON: the family finding logged a truncated-piped-stdin abort; a headless mode makes scaffolds scriptable and fails loudly on required fields
+  FILES: check_decisions.py, _test_decisions.py, README.md, CHANGELOG.md
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
