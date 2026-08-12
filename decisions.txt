@@ -337,3 +337,11 @@ or copy this template:
           fail. Fix: gate HEAD^2 (the authored PR tip) instead.
   FILES: .github/workflows/ci.yml, README.md, CHANGELOG.md
   STATUS: LOCKED.
+[2026-08-12 12:30] DECISION: README Verification section documents the real battery record
+  REASON: the README showed only unit-test counts and CI badges; the
+          real battery evidence (18,120 installed-binary executions,
+          0 failures) was invisible to users. Added a family
+          canonical Verification section before Companion tools so
+          the proof is on the page for adopters.
+  FILES: README.md, CHANGELOG.md
+  STATUS: LOCKED.
