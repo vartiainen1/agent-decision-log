@@ -10,6 +10,12 @@ top of this file is the single source of truth - releases are cut from it by
 - `--version` flag prints the tool version and exits 0 (family finding #1
   closed - all four family tools now support it).
 
+### Fixed
+- `--init` scaffold ships only LOCKED/REVISED example decisions, never an
+  OPEN one, so a fresh adopter passes `--has-open` out of the box (family
+  finding #4 closed).
+
+
 ## [0.5.0] - 2026-08-11
 
 ### Added

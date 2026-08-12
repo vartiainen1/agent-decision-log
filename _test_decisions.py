@@ -356,6 +356,12 @@ try:
     t("init scaffold validates", quiet(cd.cmd_check, (tI / "decisions.txt").read_text(encoding="utf-8")) == 0)
     t("init scaffold keeps section-5 template", "5) TO ADD A NEW ENTRY" in (tI / "decisions.txt").read_text(encoding="utf-8"))
     t("init scaffold has the example entries", "EXAMPLE ENTRIES" in (tI / "decisions.txt").read_text(encoding="utf-8"))
+    t("init scaffold ships NO OPEN example decision", "STATUS: OPEN." not in (tI / "decisions.txt").read_text(encoding="utf-8"))
+    t("init scaffold explains the no-OPEN policy", "freshly scaffolded log ships only LOCKED/REVISED examples" in (tI / "decisions.txt").read_text(encoding="utf-8"))
+    # family finding #4: a fresh adopter must pass --has-open out of the box
+    _scaffold = (tI / "decisions.txt").read_text(encoding="utf-8")
+    t("init scaffold passes the --has-open gate (finding #4)", quiet(cd.cmd_has_open, _scaffold) == 0)
+    t("init scaffold has no current-OPEN decisions", cd.current_open(cd.parse_entries(_scaffold)) == [])
     t("init scaffold never ships the repo's dev log",
       "used regex instead of AST parser" not in (tI / "decisions.txt").read_text(encoding="utf-8") or True)
     quiet(cd.cmd_init, tI, False)
