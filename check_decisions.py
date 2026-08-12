@@ -34,6 +34,7 @@ Exit codes: 0 = ok / gate passed, 1 = validation errors or gate failed.
 """
 
 from __future__ import annotations
+VERSION = "0.5.0"
 
 import argparse
 import os
@@ -920,7 +921,12 @@ def main() -> int:
     ap.add_argument("--check-commit", metavar="FILE",
                     help="gate: exit 0 only if the commit message in FILE names "
                          "a logged decision (AREA:/LOG: marker)")
+    ap.add_argument("--version", action="store_true", help="print version and exit")
     args = ap.parse_args()
+
+    if args.version:
+        print(f"check_decisions.py {VERSION}")
+        return 0
 
     if args.init:
         return cmd_init(args.target or ".", run_tests=not args.no_tests)

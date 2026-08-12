@@ -276,6 +276,11 @@ Cross-link them in your setup notes.
   FILES: README.md
   STATUS: LOCKED.
 
+[2026-08-12 02:46] DECISION: add --version flag to decision-log (family finding #1)
+  REASON: the 500-test run found decision-log rejects --version with rc 2; all four family tools should report their version
+  FILES: check_decisions.py
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
