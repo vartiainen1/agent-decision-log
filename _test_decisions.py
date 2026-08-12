@@ -660,4 +660,21 @@ t("default base: pip-installed module resolves to the cwd",
   cd._default_base(Path("/usr/local/lib/python3.12/site-packages/check_decisions.py"))
   == Path.cwd())
 
+
+def _main_rc(argv):
+    old = sys.argv
+    sys.argv = argv
+    try:
+        return cd.main()
+    finally:
+        sys.argv = old
+
+
+# --- --version contract (family finding #1) --------------------------------
+t("version: flag prints version and exits 0", _main_rc(["check_decisions.py", "--version"]) == 0)
+t("version: constant matches CHANGELOG first versioned header",
+  cd.VERSION == "0.5.0")
+t("version: constant is a semantic version triple",
+  len(cd.VERSION.split(".")) == 3)
+
 print(f"\nAll {PASS} tests passed.")

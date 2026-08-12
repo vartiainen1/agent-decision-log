@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The version at the
 top of this file is the single source of truth - releases are cut from it by
 `.github/workflows/release.yml`.
 
+## [Unreleased]
+
+### Added
+- `--version` flag prints the tool version and exits 0 (family finding #1
+  closed - all four family tools now support it).
+
 ## [0.5.0] - 2026-08-11
 
 ### Added
