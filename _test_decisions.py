@@ -671,9 +671,23 @@ def _main_rc(argv):
 
 
 # --- --version contract (family finding #1) --------------------------------
-t("version: flag prints version and exits 0", _main_rc(["check_decisions.py", "--version"]) == 0)
-t("version: constant matches CHANGELOG first versioned header",
-  cd.VERSION == "0.5.0")
+_ver_out = io.StringIO()
+_saved_stdout = sys.stdout
+sys.stdout = _ver_out
+try:
+    _ver_rc = _main_rc(["check_decisions.py", "--version"])
+finally:
+    sys.stdout = _saved_stdout
+t("version: flag exits 0", _ver_rc == 0)
+t("version: prints module name and version",
+  ("check_decisions.py " + cd.VERSION) in _ver_out.getvalue())
+# true self-sync: read the CHANGELOG at test time (diff-gate contract)
+_cl = (Path(__file__).resolve().parent / "CHANGELOG.md").read_text(
+    encoding="utf-8")
+_first_versioned = next(
+    (ln for ln in _cl.splitlines() if ln.startswith("## [") and "Unreleased" not in ln), None)
+t("version: CHANGELOG first versioned header matches VERSION",
+  _first_versioned is not None and _first_versioned[4:].split("]", 1)[0] == cd.VERSION)
 t("version: constant is a semantic version triple",
   len(cd.VERSION.split(".")) == 3)
 
