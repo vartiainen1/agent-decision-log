@@ -281,6 +281,11 @@ Cross-link them in your setup notes.
   FILES: check_decisions.py
   STATUS: LOCKED.
 
+[2026-08-12 07:51] DECISION: init scaffold ships no OPEN example
+  REASON: fresh adopters must pass --has-open out of the box; an OPEN example fakes deferred work
+  FILES: check_decisions.py
+  STATUS: LOCKED.
+
 ================================================================================
 5) TO ADD A NEW ENTRY
 ================================================================================
