@@ -845,4 +845,12 @@ t("version: CHANGELOG first versioned header matches VERSION",
 t("version: constant is a semantic version triple",
   len(cd.VERSION.split(".")) == 3)
 
+
+_ciyml = (Path(__file__).resolve().parent / ".github" / "workflows" / "ci.yml").read_text(
+    encoding="utf-8")
+t("ci: commit-gate fetches full history so HEAD^2 resolves (merge-aware gate)",
+  "fetch-depth: 0" in _ciyml and "actions/checkout@v4" in _ciyml)
+t("ci: commit-gate gates the authored PR tip (HEAD^2) on merge commits",
+  "HEAD^2" in _ciyml and "git rev-list --parents -n1 HEAD" in _ciyml)
+
 print(f"\nAll {PASS} tests passed.")
