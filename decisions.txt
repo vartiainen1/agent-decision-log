@@ -328,3 +328,12 @@ or copy this template:
           same philosophy as the test-count drift guard.
   FILES: _check_readme_style.py, .github/workflows/ci.yml, README.md
   STATUS: LOCKED
+
+[2026-08-12 11:45] DECISION: CI commit-message gate blocks GitHub merge commits on master (red X) - gate the authored PR tip (HEAD^2) on merge commits
+  REASON: master CI went red on every --merge PR (#45+): the
+          commit-gate re-checks the pushed commit message and
+          GitHub merge commits carry no AREA marker. Squash
+          merges pass (title carries AREA + (#NN)), merge commits
+          fail. Fix: gate HEAD^2 (the authored PR tip) instead.
+  FILES: .github/workflows/ci.yml, README.md, CHANGELOG.md
+  STATUS: LOCKED.

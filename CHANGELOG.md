@@ -17,6 +17,9 @@ top of this file is the single source of truth - releases are cut from it by
   closed - all four family tools now support it).
 
 ### Fixed
+- CI commit-message gate now gates the authored PR tip (HEAD^2)
+  on GitHub merge commits, so master stops showing a red X on
+  `gh pr merge --merge` merges (family finding, all four repos)
 - `--init` scaffold ships only LOCKED/REVISED example decisions, never an
   OPEN one, so a fresh adopter passes `--has-open` out of the box (family
   finding #4 closed).
