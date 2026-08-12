@@ -7,6 +7,12 @@ top of this file is the single source of truth - releases are cut from it by
 ## [Unreleased]
 
 ### Added
+- `--stdin` non-interactive mode for `--decide`/`--revise`/`--resolve`: the
+  answers (DECISION/REASON/FILES/STATUS[,SUPERSEDES]) are read from piped
+  stdin, one per line, with no prompts; required fields and invalid input
+  fail loudly with no partial entry; optional fields default as if Enter
+  were pressed (family finding: interactive scaffolds abort on truncated
+  piped stdin).
 - `--version` flag prints the tool version and exits 0 (family finding #1
   closed - all four family tools now support it).
 
